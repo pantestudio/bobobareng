@@ -278,9 +278,9 @@ function renderCrew(){
   $("#tallyBike").innerHTML=tl(cnt(["bawa","sewa","tbd"],c=>c.bike),BIKE);
   const sorted=list.slice().sort((a,b)=>ORDER[stage(a)]-ORDER[stage(b)]);
   $("#crewList").innerHTML=sorted.length?sorted.map(c=>{const p=P(c),sg=stage(c);
-    return `<div class="member"><div class="av" style="background:${sg==="going"?"var(--lime)":sg==="pending"?"var(--pink)":"var(--paper)"}">${esc((c.name||"?").trim().charAt(0).toUpperCase())}</div><div style="min-width:0"><h4>${esc(c.name)}${m&&c.id===m.id?' <span class="mono muted">· you</span>':""}</h4>
+    return `<button type="button" class="member" data-prof="${esc(c.id)}"><div class="av" style="background:${sg==="going"?"var(--lime)":sg==="pending"?"var(--pink)":"var(--paper)"}">${esc((c.name||"?").trim().charAt(0).toUpperCase())}</div><div style="min-width:0"><h4>${esc(c.name)}${m&&c.id===m.id?' <span class="mono muted">· you</span>':""}</h4>
     <div class="row">${stagePill(c)}${c.bike?`<span class="pill">${BIKE[c.bike]}</span>`:""}</div>
-    <div class="meta">${(p.dates||[]).length?"Dates: "+esc((p.dates||[]).map(dShort).join(", ")):""}${p.party&&p.party!=="solo"?" · "+esc(partyText(c)):""}</div></div></div>`}).join("")
+    <div class="meta">${(p.dates||[]).length?"Dates: "+esc((p.dates||[]).map(dShort).join(", ")):""}${p.party&&p.party!=="solo"?" · "+esc(partyText(c)):""}</div><span class="mono muted" style="display:block;margin-top:6px">View profile →</span></div></button>`}).join("")
     :`<div class="empty">${S.online?"Nobody yet. Be the first: fill the form above.":"Crew list shows here once the app is connected."}</div>`;
 }
 
@@ -331,11 +331,20 @@ function renderGear(){
       <span class="wbar"><i style="width:${n/GITEMS.length*100}%"></i></span><small class="mono">Packed ${n}/${GITEMS.length}</small></button>`}).join("")
     :`<div class="empty">Crew profiles show up here once people join.</div>`;
 }
-function openProfile(id){const c=S.members.find(x=>x.id===id);if(!c)return;const g=gearOf(c),it=g.items||{};
+function openProfile(id){const c=S.members.find(x=>x.id===id);if(!c)return;const g=gearOf(c),p=P(c),m=me();
   const rent=GITEMS.filter(i=>i.rent&&modeOf(c,i.id)==="sewa").map(i=>i.name),brings=((g.shared)||[]).map(s=>(GROUP.find(x=>x[0]===s)||[0,s])[1]);
-  openSheet("Crew profile",`<div class="gme">${avatar(c,"avbig")}<div><h3 class="disp" style="font-size:30px">${esc(c.name)}</h3>${stagePill(c)}</div></div>
-   ${g.bikePhoto?`<div class="dphoto" style="margin-top:14px"><img src="${esc(fileUrl(g.bikePhoto))}" alt="${esc(c.name)}'s bike"></div>`:""}
-   <div class="acard"><dl><dt>Bike</dt><dd>${esc(g.bikeName||"–")} · ${esc(lab(BIKEQ,c.bike))}</dd><dt>Packed</dt><dd>${packedOf(c)} / ${GITEMS.length}</dd><dt>Renting</dt><dd>${esc(rent.join(", ")||"Nothing")}</dd><dt>Group gear</dt><dd>${esc(brings.join(", ")||"–")}</dd><dt>Dates</dt><dd>${esc((P(c).dates||[]).map(dShort).join(", ")||"–")}</dd></dl></div>`)}
+  const n=packedOf(c),mine=m&&m.id===c.id;
+  openSheet(mine?"Your profile":"Crew profile",`<div class="gme">${avatar(c,"avbig")}<div style="min-width:0"><h3 class="disp" style="font-size:30px;overflow-wrap:anywhere">${esc(c.name)}</h3><div style="margin-top:6px">${stagePill(c)}</div>
+     ${mine?"":`<a class="btn small ghost" style="margin-top:8px" href="https://wa.me/${esc(c.wa)}" target="_blank" rel="noopener">WhatsApp ↗</a>`}</div></div>
+   ${g.bikePhoto?`<div class="dphoto" style="margin-top:14px"><img src="${esc(fileUrl(g.bikePhoto))}" alt="${esc(c.name)}'s bike"><span class="tag">${esc(g.bikeName||"The bike")}</span></div>`:""}
+   <div class="hl">
+     <div><span>Sepeda</span><b>${esc(c.bike==="sewa"?"Sewa":c.bike==="bawa"?"Bawa":"Belum tau")}</b><small>${esc(g.bikeName||"")}</small></div>
+     <div><span>Packed</span><b>${n}/${GITEMS.length}</b><small class="wbar" style="margin:4px 0 0;display:block"><i style="width:${n/GITEMS.length*100}%"></i></small></div>
+     <div><span>Dates</span><b>${(p.dates||[]).length||"–"}</b><small>${esc((p.dates||[]).map(dShort).join(", "))}</small></div>
+     <div><span>Coming</span><b>${p.party&&p.party!=="solo"?"+"+(p.extra||1):"Solo"}</b><small>${p.party&&p.party!=="solo"?esc(RIDERS[p.riders]||""):""}</small></div>
+   </div>
+   <div class="acard"><dl><dt>Budget</dt><dd>${esc((p.budget||[]).map(t=>TIER[t]).join(", ")||"–")}</dd><dt>Sleep</dt><dd>${esc(lab(STAY,p.stay))}</dd><dt>Airline</dt><dd>${esc(p.airline||"–")}</dd><dt>Flight</dt><dd>${c.fl_status==="booked"?"✓ Booked":c.fl_status==="hold"?"Looking":"Not booked yet"}${(c.fin||{}).no?" · lands "+esc(fdate(c.fin.date))+" "+esc(c.fin.time||""):""}</dd><dt>Renting</dt><dd>${esc(rent.join(", ")||"Nothing")}</dd><dt>Group gear</dt><dd>${esc(brings.join(", ")||"–")}</dd></dl></div>
+   ${mine?`<a class="btn small" href="#me" data-close="1" style="margin-top:12px">Edit my profile</a>`:""}`)}
 
 /* ---------- ADMIN ---------- */
 function renderAdmin(){
@@ -467,6 +476,7 @@ function bind(){
   $("#editForm").addEventListener("submit",e=>{e.preventDefault();const {q,miss}=readQ("ed");if(miss.length){complain("ed",miss);return}
     act(async()=>{const r=await upMe({name:q.name,wa:q.wa,bike:q.bike,prefs:q.prefs});S.wa=r.wa;store.set("bobo.wa",r.wa);store.set("bobo.known","1");edDirty=false},"Saved")});
   $("#outBtn").onclick=()=>{const m=me();if(!m)return;const back=m.status==="out";act(()=>upMe({status:back?"in":"out"}),back?"Welcome back!":"Got it. Marked as not going.")};
+  $("#logoutTop").onclick=()=>$("#logoutBtn").click();
   $("#logoutBtn").onclick=()=>{S.wa=null;store.set("bobo.wa",null);renderAll();location.hash="#home";toast("Logged out on this phone")};
   $("#copyAmt").onclick=()=>copy(String(dpAmount()),"Amount copied");
   $("#copyAcct").onclick=()=>copy(S.config.bank_acct||"8400064491","Account copied");
@@ -502,7 +512,7 @@ function bind(){
   $("#adminOut").onclick=()=>{S.admin=null;store.set("bobo.admin",null);renderAll();location.hash="#home";toast("Admin mode off")};
   $("#csvBtn").onclick=csv;
   document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.gp){const g=myG(),o=g.items[t.dataset.gp]||{};o.p=t.checked?1:0;g.items[t.dataset.gp]=o;saveGear();renderGear()}});
-  document.addEventListener("click",e=>{const t=e.target.closest("[data-gm],[data-gs],[data-prof]");if(!t)return;
+  document.addEventListener("click",e=>{const t=e.target.closest("[data-gm],[data-gs],[data-prof],a[data-close]");if(!t)return;if(t.matches("a[data-close]")){closeSheet();return}
     if(t.dataset.prof){openProfile(t.dataset.prof);return}
     if(t.dataset.gm){const id=t.dataset.gm,v=t.dataset.v;if(id==="bike"){act(()=>upMe({bike:v}),v==="sewa"?"Renting a bike in Osaka":"Bringing your own bike");return}
       const g=myG(),o=g.items[id]||{};o.m=o.m===v?"":v;g.items[id]=o;saveGear();renderGear();return}
