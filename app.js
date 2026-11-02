@@ -473,6 +473,10 @@ function doSearch(){const q=$("#q").value.trim().toLowerCase(),out=q?IDX.filter(
 
 /* ---------- actions ---------- */
 const appUrl=()=>location.origin+location.pathname;
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-share]");if(!b)return;
+  const url=appUrl(),text="🚴🇯🇵 BOBO BARENG JEPANG EDITION. Road-bike trip di Osaka, Maret 2027. Info, vote tanggal & daftar di sini:";
+  try{if(navigator.share){await navigator.share({title:"Bobo Bareng Jepang",text,url});return}}catch(err){if(err&&err.name==="AbortError")return}
+  window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener")});
 function waTo(wa,text){try{window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`,"_blank","noopener")}catch(_){}}
 const upMe=patch=>rpc("fn_update_me",{p_wa:S.wa,p_patch:patch});
 const num=v=>+String(v||"").replace(/\D/g,"")||0;
