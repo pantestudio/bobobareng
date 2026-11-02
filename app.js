@@ -35,11 +35,16 @@ const admin=(action,payload)=>rpc("fn_admin",{p_code:S.admin,p_action:action,p_p
 async function load(){
   const [m,l,b,c,w]=await Promise.all([api("members?select=*&order=created_at"),api("ledger?select=*&order=date.desc,created_at.desc"),api("bookings?select=*&order=date"),api("config?select=*&id=eq.1"),api("weather?select=*")]);
   S.members=m||[];S.ledger=l||[];S.bookings=b||[];S.config=(c&&c[0])||{};S.weather={};(w||[]).forEach(x=>S.weather["d"+x.day]=x);
-  if(S.admin){try{const r=await rpc("fn_admin_seen",{p_code:S.admin});S.seen={};(r||[]).forEach(x=>S.seen[x.member_id]=x)}catch(_){}}
+  if(S.admin){try{S.visits=await rpc("fn_admin_visits",{p_code:S.admin})}catch(_){}try{const r=await rpc("fn_admin_seen",{p_code:S.admin});S.seen={};(r||[]).forEach(x=>S.seen[x.member_id]=x)}catch(_){}}
   S.state="ok";S.lastSync=new Date();
 }
 const _tch={};
 function touch(v){if(!S.wa||S.admin||!S.online)return;const k=v||"app",n=Date.now();if(_tch[k]&&n-_tch[k]<60000)return;_tch[k]=n;rpc("fn_touch",{p_wa:S.wa,p_view:v||null}).catch(()=>{})}
+const DEV=(()=>{let d=store.get("bobo.dev");if(!d||String(d).length<8){d=((crypto.randomUUID&&crypto.randomUUID())||String(Math.random()).slice(2)+Date.now()).replace(/-/g,"");store.set("bobo.dev",d)}return d})();
+let vsid=null,vact=Date.now();
+function visit(){if(S.admin||!S.online)return;if(Date.now()-vact>30*60000)vsid=null;vact=Date.now();
+  let tz="";try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(_){}
+  rpc("fn_visit",{p_device:DEV,p_wa:S.wa||null,p_tz:tz,p_ua:navigator.userAgent,p_view:(location.hash||"#home").slice(1),p_sid:vsid}).then(r=>{if(r)vsid=r}).catch(()=>{})}
 function ago(d){if(!d)return"never";const m=Math.round((Date.now()-new Date(d))/6e4);if(m<2)return"just now";if(m<60)return m+" min ago";const h=Math.round(m/60);if(h<24)return h+" h ago";const dd=Math.round(h/24);return dd+(dd===1?" day ago":" days ago")}
 async function refresh(){if(!S.online)return;try{await load()}catch(e){S.state=S.state==="ok"?"stale":"err";console.warn(e)}renderAll()}
 async function shrink(file){ // compress photos to keep uploads small
@@ -396,7 +401,9 @@ function renderAdmin(){
     ${newJ.length?'<button class="btn small ghost" id="seenBtn" type="button" style="margin-top:8px">Got it, mark as seen</button>':'<p class="note" style="margin:8px 0 0">No notifications. Check this page once a day.</p>'}`;
   {const sn=S.seen||{},rows=list.map(c=>({c,s:sn[c.id]})).sort((a,b)=>(b.s?+new Date(b.s.last_seen):0)-(a.s?+new Date(a.s.last_seen):0));
    const read=x=>{const v=(x.s&&x.s.views)||{};return ["home","rute","crew","gear","dompet"].filter(k=>v[k]).map(k=>k[0].toUpperCase()+k.slice(1)).join(" · ")||"–"};
-   $("#adminSeen").innerHTML=`<h3 class="disp" style="font-size:24px">Who's opened it</h3><p class="note" style="margin:4px 0 8px">Logged-in crew only. Your own visits aren't counted.</p>`+(rows.length?rows.map(x=>`<div class="acard" style="padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.c.name)}</b><span class="mono">${x.s?esc(ago(x.s.last_seen)):"Not opened yet"}</span></div>${x.s?`<div class="mono" style="margin-top:4px">${x.s.opens}× opened · saw: ${esc(read(x))}${x.c.prefs&&(x.c.prefs.dates||[]).length?" · voted ✓":" · no vote yet"}</div>`:""}</div>`).join(""):`<p class="note">Nobody yet.</p>`)}
+   const V=S.visits||{recent:[]},mmss=x=>x>=60?Math.floor(x/60)+" min":(x||0)+" sec",tf=d=>new Date(d).toLocaleString("en-GB",{timeZone:"Asia/Makassar",weekday:"short",hour:"2-digit",minute:"2-digit"});
+   $("#adminSeen").innerHTML=`<h3 class="disp" style="font-size:24px">Visits</h3><div class="acct" style="margin:8px 0"><div><b>${V.total||0}</b><small>visits</small></div><div><b>${V.devices||0}</b><small>devices</small></div><div><b>${V.today||0}</b><small>last 24h</small></div></div><p class="note" style="margin:0 0 8px">Average time spent: ${mmss(V.avg||0)}. Latest first, your time (WITA).</p>${(V.recent||[]).map(v=>`<div class="mono" style="padding:5px 0;border-top:1px solid var(--line)">${esc(tf(v.started))} · <b>${esc(v.name||"Unknown visitor")}</b> · ${esc(v.device_type||"")} · ${esc(v.tz||"?")} · ${mmss(v.seconds)} · ${esc(v.view||"")}</div>`).join("")||'<p class="note">No visits yet.</p>'}
+   <h3 class="disp" style="font-size:24px;margin-top:18px">Who's opened it</h3><p class="note" style="margin:4px 0 8px">Logged-in crew only. Your own visits aren't counted.</p>`+(rows.length?rows.map(x=>`<div class="acard" style="padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.c.name)}</b><span class="mono">${x.s?esc(ago(x.s.last_seen)):"Not opened yet"}</span></div>${x.s?`<div class="mono" style="margin-top:4px">${x.s.opens}× opened · saw: ${esc(read(x))}${x.c.prefs&&(x.c.prefs.dates||[]).length?" · voted ✓":" · no vote yet"}</div>`:""}</div>`).join(""):`<p class="note">Nobody yet.</p>`)}
   const toApprove=pend.concat(unpaid);
   $("#approveList").innerHTML=toApprove.length?toApprove.map(c=>{const pr=c.proof&&c.proof.status==="pending"?c.proof:null;
     return `<div class="acard"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h4>${esc(c.name)}</h4>${stagePill(c)}</div>
@@ -604,5 +611,5 @@ renderDayChips();renderDay();renderSpots();
 if(!S.online)S.state="off";
 renderAll();tick();setInterval(tick,1000);
 if(S.online){refresh();setInterval(()=>{if(!document.hidden)refresh()},20000)}
-checkVersion();setInterval(checkVersion,300000);document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkVersion();touch((location.hash||"#home").slice(1))}});
+visit();setInterval(()=>{if(!document.hidden)visit()},20000);checkVersion();setInterval(checkVersion,300000);document.addEventListener("visibilitychange",()=>{if(!document.hidden){visit();checkVersion();touch((location.hash||"#home").slice(1))}});
 })();
