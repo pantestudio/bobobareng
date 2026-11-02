@@ -55,7 +55,7 @@ async function act(fn,okMsg){try{const r=await fn();await refresh();if(okMsg)toa
   const m=String(e.message||"");toast(m.includes("not_admin")?"Admin code is wrong.":m.includes("not_member")?"Log in first.":m.includes("wa_check")?"That WhatsApp number didn't work. Type it like 0812 3456 7890, or with the country code like +65 9123 4567.":m.includes("duplicate")?"That WhatsApp number is already used.":"Couldn't save. Check your connection and try again.");console.warn(e)}}
 
 /* ---------- routing ---------- */
-const VIEWS=["home","rute","crew","dompet","spots","admin"];
+const VIEWS=["home","rute","crew","gear","dompet","spots","admin"];
 function route(){let v=(location.hash||"#home").slice(1);if(!VIEWS.includes(v))v="home";
   VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});
   $$(".tabs a").forEach(a=>{if(a.dataset.tab===v)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
@@ -249,6 +249,59 @@ function renderCrew(){
     :`<div class="empty">${S.online?"Nobody yet. Be the first: fill the form above.":"Crew list shows here once the app is connected."}</div>`;
 }
 
+/* ---------- GEAR ---------- */
+const GEAR=[
+ ["Sepeda",[["bike","Road bike","Bawa in a bike box, or sewa in Osaka",1],["bikebox","Bike box / bag","For the flight (bawa only)"],["rinko","Rinko bag","Japan trains: bikes must be bagged"],["pedals","Pedals + cleats","Rental bikes usually come without",1],["helmet","Helmet","",1],["lights","Front + rear lights","Required after dark in Japan",1],["bell","Bell","Expected on Japanese roads"],["lock","Light lock","Konbini stops",1],["bottles","2 bottles",""],["tubes","2 spare tubes + levers",""],["pump","Mini pump","No CO2 on the plane, buy it in Japan"],["tool","Multi-tool",""],["garmin","Bike computer + charger","",1]]],
+ ["Ride kit",[["kit","2 jerseys + 2 bibs","Wash at the bobo"],["gloves","Full-finger gloves","Mornings can be 4°C in March"],["armleg","Arm + knee warmers",""],["gilet","Gilet / windbreaker","Lake Biwa wind"],["rain","Rain jacket","~45% chance of some rain"],["base","Base layer",""],["shoes","Cycling shoes",""],["socks","Socks ×3",""],["cap","Cap / buff",""],["sunnies","Sunglasses",""],["sunscreen","Sunscreen",""],["chamois","Chamois cream",""]]],
+ ["Off the bike",[["casual","2 casual outfits",""],["jacket","Warm jacket","Evenings are cold"],["walkshoes","Light walking shoes",""],["sleep","Sleepwear",""],["toilet","Toiletries","Onsen give towels"]]],
+ ["Documents + money",[["passport","Passport","Valid 6+ months"],["vjw","Visit Japan Web QR","For immigration + customs"],["yen","Cash yen","Small shops are cash only"],["ic","ICOCA / Suica on phone","Trains + konbini"],["card","Credit card",""],["insurance","Travel insurance incl. cycling",""]]],
+ ["Tech",[["phone","Phone + bar mount",""],["powerbank","Power bank","Carry-on only"],["esim","Japan eSIM",""],["adapter","Plug adapter","Japan uses flat 2-pin (Type A)"],["chargers","Chargers + cables",""]]],
+ ["Health",[["meds","Personal meds",""],["firstaid","Plasters + painkillers",""],["fuel","Gels + electrolytes","Or konbini onigiri"]]]
+];
+const GROUP=[["floorpump","Floor pump","For the bobo, saves everyone's arms"],["toolkit","Workshop tool kit","Hex keys, torque key, chain tool"],["lube","Chain lube + rag",""],["firstaidbig","Group first aid kit",""],["spares","Team spares","Spare tire, tire boot, quick links"],["zip","Zip ties + tape",""],["plug","Multi-plug + extension","Charging 6 Garmins at once"],["speaker","Bluetooth speaker","Flex wajib"]];
+const GITEMS=GEAR.flatMap(([c,l])=>l.map(i=>({id:i[0],name:i[1],note:i[2],rent:!!i[3],cat:c})));
+let myGear=null,gearTimer=null;
+const gearOf=c=>c.gear||{};
+function packedOf(c){const it=(gearOf(c).items)||{};return GITEMS.filter(i=>it[i.id]&&it[i.id].p).length}
+function modeOf(c,id){const it=((gearOf(c).items)||{})[id]||{};if(id==="bike")return c.bike==="sewa"?"sewa":c.bike==="bawa"?"bawa":(it.m||"");return it.m||""}
+const avatar=(c,cls)=>c.photo?`<img class="${cls||"avp"}" src="${esc(fileUrl(c.photo))}" alt="${esc(c.name)}" loading="lazy">`:`<span class="${cls||"avp"} ini">${esc((c.name||"?").trim().charAt(0).toUpperCase())}</span>`;
+function saveGear(){clearTimeout(gearTimer);gearTimer=setTimeout(()=>{const g=myGear;rpc("fn_update_me",{p_wa:S.wa,p_patch:{gear:g}}).then(()=>{if(myGear===g)myGear=null;refresh()}).catch(()=>toast("Couldn't save. Check your connection."))},700)}
+function myG(){const m=me();if(!myGear)myGear=JSON.parse(JSON.stringify(gearOf(m)||{}));myGear.items=myGear.items||{};myGear.shared=myGear.shared||[];return myGear}
+function renderGear(){
+  const m=me(),list=crewList().filter(c=>c.status!=="out");
+  $("#gearGate").innerHTML=m?"":`<div class="box pad"><h3 class="disp" style="font-size:24px">Your packing list lives here</h3><p class="note" style="margin:6px 0 10px">Join first, then tick off what you pack, mark what you'll rent, and add a photo of your bike.</p><a class="btn small" href="#crew">Join / log in</a></div>`;
+  $("#myGear").hidden=!m;
+  if(m){const g=myGear||gearOf(m),it=g.items||{},n=packedOf({gear:g}),tot=GITEMS.length;
+    const typing=document.activeElement&&document.activeElement.id==="gBikeName";
+    if(!typing){$("#gMe").innerHTML=`<div class="gme"><label class="phup" title="Change photo">${avatar(m,"avbig")}<input type="file" accept="image/*" id="gPhoto" hidden><span>${m.photo?"Change":"Add"} photo</span></label>
+      <div style="min-width:0"><h3 class="disp" style="font-size:28px;overflow-wrap:anywhere">${esc(m.name)}</h3>
+      <div class="field" style="margin-top:8px"><label for="gBikeName">My bike</label><input id="gBikeName" maxlength="60" placeholder="${m.bike==="sewa"?"Rental bike (Osaka)":"e.g. Canyon Aeroad, Specialized Tarmac"}" value="${esc(g.bikeName||"")}"></div></div></div>
+      <div class="bikeph">${g.bikePhoto?`<img src="${esc(fileUrl(g.bikePhoto))}" alt="My bike">`:`<span>No bike photo yet</span>`}<label class="btn small ghost">${g.bikePhoto?"Change":"Add"} bike photo<input type="file" accept="image/*" id="gBikePhoto" hidden></label></div>
+      <div class="sub"><span>Packed ${n} / ${tot}</span><span>${Math.round(n/tot*100)}%</span></div><div class="prog"><i style="width:${n/tot*100}%"></i></div>`;}
+    $("#gearList").innerHTML=GEAR.map(([cat,items])=>`<div class="gcat"><div class="sub"><span>${esc(cat)}</span><span>${items.filter(i=>it[i[0]]&&it[i[0]].p).length}/${items.length}</span></div>`+
+      items.map(([id,name,note,rent])=>{const st=it[id]||{},md=id==="bike"?modeOf(m,id):st.m||"";
+        return `<div class="gi ${st.p?"on":""}"><label><input type="checkbox" data-gp="${id}" ${st.p?"checked":""}><span><b>${esc(name)}</b>${note?`<small>${esc(note)}</small>`:""}</span></label>${rent?`<div class="gseg"><button type="button" data-gm="${id}" data-v="bawa" aria-pressed="${md==="bawa"}">Bawa</button><button type="button" data-gm="${id}" data-v="sewa" aria-pressed="${md==="sewa"}">Sewa</button></div>`:""}</div>`}).join("")+`</div>`).join("");
+    if(!typing){const bn=$("#gBikeName");bn.onchange=()=>{myG().bikeName=bn.value.trim();saveGear();toast("Saved")};
+    $("#gPhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(_){toast("Upload failed. Try a smaller photo.")}};
+    $("#gBikePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"bikes");myG().bikePhoto=p;clearTimeout(gearTimer);await act(()=>upMe({gear:myG()}),"Bike photo saved");myGear=null}catch(_){toast("Upload failed. Try a smaller photo.")}};}
+  }
+  const claims={};list.forEach(c=>((gearOf(c).shared)||[]).forEach(id=>(claims[id]=claims[id]||[]).push(c)));
+  const mine=m?((myGear||gearOf(m)).shared||[]):[];
+  $("#sharedList").innerHTML=GROUP.map(([id,name,note])=>{const who=(claims[id]||[]).filter(c=>!m||c.id!==m.id);if(mine.includes(id)&&m)who.unshift(m);
+    return `<div class="gi ${who.length?"on":""}"><span style="flex:1;min-width:0"><b>${esc(name)}</b><small>${note?esc(note)+" · ":""}${who.length?"Bringing: "+who.map(c=>esc(c.name.split(" ")[0])).join(", "):"Nobody yet"}</small></span>${m?`<button class="btn small ${mine.includes(id)?"":"ghost"}" type="button" data-gs="${id}">${mine.includes(id)?"I'm bringing ✓":"I'll bring it"}</button>`:""}</div>`}).join("");
+  $("#gearCount").textContent=list.length?`${list.length} riders`:"";
+  $("#crewWall").innerHTML=list.length?list.map(c=>{const g=gearOf(c),n=packedOf(c);
+    return `<button class="wcard" type="button" data-prof="${esc(c.id)}">${g.bikePhoto?`<img class="wbike" src="${esc(fileUrl(g.bikePhoto))}" alt="" loading="lazy">`:`<span class="wbike none">${c.bike==="sewa"?"Sewa bike":"No bike photo"}</span>`}
+      <span class="wrow">${avatar(c)}<span style="min-width:0"><b>${esc(c.name)}</b><small>${esc(g.bikeName||(c.bike==="sewa"?"Rental bike":c.bike==="bawa"?"Own bike":"Bike TBD"))}</small></span></span>
+      <span class="wbar"><i style="width:${n/GITEMS.length*100}%"></i></span><small class="mono">Packed ${n}/${GITEMS.length}</small></button>`}).join("")
+    :`<div class="empty">Crew profiles show up here once people join.</div>`;
+}
+function openProfile(id){const c=S.members.find(x=>x.id===id);if(!c)return;const g=gearOf(c),it=g.items||{};
+  const rent=GITEMS.filter(i=>i.rent&&modeOf(c,i.id)==="sewa").map(i=>i.name),brings=((g.shared)||[]).map(s=>(GROUP.find(x=>x[0]===s)||[0,s])[1]);
+  openSheet("Crew profile",`<div class="gme">${avatar(c,"avbig")}<div><h3 class="disp" style="font-size:30px">${esc(c.name)}</h3>${stagePill(c)}</div></div>
+   ${g.bikePhoto?`<div class="dphoto" style="margin-top:14px"><img src="${esc(fileUrl(g.bikePhoto))}" alt="${esc(c.name)}'s bike"></div>`:""}
+   <div class="acard"><dl><dt>Bike</dt><dd>${esc(g.bikeName||"–")} · ${esc(lab(BIKEQ,c.bike))}</dd><dt>Packed</dt><dd>${packedOf(c)} / ${GITEMS.length}</dd><dt>Renting</dt><dd>${esc(rent.join(", ")||"Nothing")}</dd><dt>Group gear</dt><dd>${esc(brings.join(", ")||"–")}</dd><dt>Dates</dt><dd>${esc((P(c).dates||[]).map(dShort).join(", ")||"–")}</dd></dl></div>`)}
+
 /* ---------- ADMIN ---------- */
 function renderAdmin(){
   const isA=!!S.admin;$("#tabAdmin").hidden=!isA;$("#adminForm").hidden=isA||!S.online;$("#adminBox").hidden=!isA;
@@ -412,6 +465,12 @@ function bind(){
     try{await rpc("fn_admin",{p_code:code,p_action:"check",p_payload:{}});S.admin=code;store.set("bobo.admin",code);$("#adminCode").value="";store.set("bobo.seen",store.get("bobo.seen")||"");renderAll();toast("Admin mode on")}catch(_){toast("Admin code is wrong.")}});
   $("#adminOut").onclick=()=>{S.admin=null;store.set("bobo.admin",null);renderAll();location.hash="#home";toast("Admin mode off")};
   $("#csvBtn").onclick=csv;
+  document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.gp){const g=myG(),o=g.items[t.dataset.gp]||{};o.p=t.checked?1:0;g.items[t.dataset.gp]=o;saveGear();renderGear()}});
+  document.addEventListener("click",e=>{const t=e.target.closest("[data-gm],[data-gs],[data-prof]");if(!t)return;
+    if(t.dataset.prof){openProfile(t.dataset.prof);return}
+    if(t.dataset.gm){const id=t.dataset.gm,v=t.dataset.v;if(id==="bike"){act(()=>upMe({bike:v}),v==="sewa"?"Renting a bike in Osaka":"Bringing your own bike");return}
+      const g=myG(),o=g.items[id]||{};o.m=o.m===v?"":v;g.items[id]=o;saveGear();renderGear();return}
+    if(t.dataset.gs){const g=myG(),id=t.dataset.gs;g.shared=g.shared.includes(id)?g.shared.filter(x=>x!==id):g.shared.concat(id);saveGear();renderGear();toast(g.shared.includes(id)?"Thanks! You're bringing it.":"Removed")}});
   document.addEventListener("click",e=>{if(e.target.id==="seenBtn"){const mx=crewList().reduce((x,c)=>String(c.created_at||"")>x?String(c.created_at):x,"");store.set("bobo.seen",mx);renderAll()}});
 
   $("#cN").oninput=()=>{C.n=+$("#cN").value;renderCalc()};
@@ -448,7 +507,7 @@ function hardReload(){location.replace(location.pathname+"?v="+Date.now()+locati
     if(dy>=GO){el.classList.add("go");tx.textContent="Updating…";show(GO);setTimeout(hardReload,150)}else show(-200);dy=0},{passive:true});
 })();
 
-function renderAll(){renderHome();renderCrew();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
+function renderAll(){renderHome();renderCrew();renderGear();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
 
 $("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");
 route();bind();renderInstall();
