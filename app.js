@@ -421,11 +421,32 @@ function bind(){
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
 }
 
+/* ---------- install + updates ---------- */
+const BUILD=DATA.build;
+const standalone=()=>window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+let deferredInstall=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;renderInstall()});
+function renderInstall(){const c=$("#installCard");if(standalone()||store.get("bobo.noinstall")){c.hidden=true;return}
+  const share=`<svg class="shareic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg>`;
+  c.innerHTML=`<h3>Save it as an app</h3><p class="note" style="margin:6px 0 0">One tap from your home screen, opens full screen like an app. No download.</p>`+
+   (deferredInstall?`<div class="x"><button class="btn small" type="button" id="instBtn">Install app</button><button class="btn small ghost" type="button" id="instNo">Later</button></div>`
+   :isIOS?`<ol><li>Open this link in <b>Safari</b></li><li>Tap Share ${share} at the bottom</li><li>Tap <b>Add to Home Screen</b> → <b>Add</b></li></ol><div class="x"><button class="btn small ghost" type="button" id="instNo">Done / later</button></div>`
+   :`<ol><li>Tap <b>⋮</b> at the top right of Chrome</li><li>Tap <b>Add to Home screen</b> or <b>Install app</b></li></ol><div class="x"><button class="btn small ghost" type="button" id="instNo">Done / later</button></div>`);
+  c.hidden=false;
+  const ib=$("#instBtn");if(ib)ib.onclick=async()=>{deferredInstall.prompt();try{await deferredInstall.userChoice}catch(_){}deferredInstall=null;renderInstall()};
+  $("#instNo").onclick=()=>{store.set("bobo.noinstall","1");c.hidden=true}}
+async function checkVersion(){try{const r=await fetch("version.txt?t="+Date.now(),{cache:"no-store"});if(!r.ok)return;const v=(await r.text()).trim();if(v&&BUILD&&v!==BUILD)$("#updBar").hidden=false}catch(_){}}
+function hardReload(){location.replace(location.pathname+"?v="+Date.now()+location.hash)}
+
 function renderAll(){renderHome();renderCrew();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
 
 $("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");document.body.insertAdjacentHTML("beforeend",`<datalist id="airlines">${AIRLINES.map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`);
-route();bind();renderDayChips();renderDay();renderSpots();
+route();bind();renderInstall();
+$("#btnReload").onclick=()=>{$("#btnReload").classList.add("spin");hardReload()};$("#updBtn").onclick=hardReload;
+renderDayChips();renderDay();renderSpots();
 if(!S.online)S.state="off";
 renderAll();tick();setInterval(tick,1000);
 if(S.online){refresh();setInterval(()=>{if(!document.hidden)refresh()},20000)}
+checkVersion();setInterval(checkVersion,300000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkVersion()});
 })();
