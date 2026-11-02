@@ -439,6 +439,16 @@ function renderInstall(){const c=$("#installCard");if(standalone()||store.get("b
 async function checkVersion(){try{const r=await fetch("version.txt?t="+Date.now(),{cache:"no-store"});if(!r.ok)return;const v=(await r.text()).trim();if(v&&BUILD&&v!==BUILD)$("#updBar").hidden=false}catch(_){}}
 function hardReload(){location.replace(location.pathname+"?v="+Date.now()+location.hash)}
 
+/* pull down at the top of any page = reload to the latest version (like Cmd+R) */
+(function(){const el=$("#ptr"),ic=$("#ptrIc"),tx=$("#ptrTx"),MAX=130,GO=85;let y0=null,dy=0;
+  const blocked=t=>!$("#sheet").hidden||!$("#search").hidden||t.closest(".mapwrap,input,textarea,select");
+  const show=d=>{el.style.transform=`translate(-50%,${Math.min(d,MAX)-120}px)`;ic.textContent=d>=GO?"↻":"↓";tx.textContent=d>=GO?"Release to update":"Pull to refresh"};
+  document.addEventListener("touchstart",e=>{if(window.scrollY>0||e.touches.length>1||blocked(e.target)){y0=null;return}y0=e.touches[0].clientY;dy=0;el.classList.add("drag")},{passive:true});
+  document.addEventListener("touchmove",e=>{if(y0===null)return;dy=(e.touches[0].clientY-y0)*.55;if(dy<=0||window.scrollY>0){dy=0;show(-200);return}show(dy)},{passive:true});
+  document.addEventListener("touchend",()=>{if(y0===null)return;y0=null;el.classList.remove("drag");
+    if(dy>=GO){el.classList.add("go");tx.textContent="Updating…";show(GO);setTimeout(hardReload,150)}else show(-200);dy=0},{passive:true});
+})();
+
 function renderAll(){renderHome();renderCrew();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
 
 $("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");document.body.insertAdjacentHTML("beforeend",`<datalist id="airlines">${AIRLINES.map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`);
