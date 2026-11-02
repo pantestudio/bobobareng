@@ -6,9 +6,9 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const rp=n=>"Rp "+Math.round(n||0).toLocaleString("id-ID");
 const jt=n=>"Rp "+((n||0)/1e6).toFixed(1).replace(".",",")+" jt";
 const yen=n=>"¥"+Math.round(n).toLocaleString("en-US");
-const DAYC={1:"#2346F0",2:"#C8F03C",3:"#0E3A2D",4:"#E0789F"}, DAYFG={1:"#F7F7F3",2:"#0D0E0D",3:"#C8F03C",4:"#0D0E0D"};
+const DAYC={1:"#D01A2E",2:"#F0D9A6",3:"#A5141F",4:"#C97B63"}, DAYFG={1:"#FBF8F1",2:"#1B1411",3:"#F0D9A6",4:"#1B1411"};
 const TIER={kere:"Kere Hore",rame:"Rame-Rame",sultan:"Agak Sultan"}, BIKE={bawa:"Bawa",sewa:"Sewa",tbd:"Belum tau"}, STAT={in:"Ikut",maybe:"Mikir",out:"Skip"};
-const CATC={Bobo:"#2346F0",Sepeda:"#C8F03C",Koper:"#0D0E0D",Transport:"#E0789F",Makan:"#F2A7C3",Tiket:"#8FA2FF","Lain-lain":"#B9BAB4",Refund:"#55564F"};
+const CATC={Bobo:"#D01A2E",Sepeda:"#F0D9A6",Koper:"#1B1411",Transport:"#C97B63",Makan:"#E9B8A8",Tiket:"#E8A39B","Lain-lain":"#C7BBA8",Refund:"#5E5348"};
 const photo=n=>"photos/"+n+".jpg";
 
 /* ---------- local session ---------- */
@@ -85,7 +85,7 @@ function renderHome(){
   $("#announce").innerHTML=S.config.announce?`<div class="announce">${esc(S.config.announce)}</div>`:"";
   $("#msList").innerHTML=DATA.milestones.map(x=>{const t=new Date(x.at),st=t<now?"done":(x===nx?"now":"");
     return `<li class="${st}"><div class="d">${esc(fmtDate(x.at,{weekday:"short"}))}<br>${t.getFullYear()}</div><div><h4>${esc(x.title)}</h4><p>${esc(x.text)}</p></div>${st==="done"?'<span class="pill no">Done</span>':st==="now"?'<span class="pill ink">Now</span>':""}</li>`}).join("");
-  $("#homeLadder").innerHTML=DATA.days.map(d=>`<a href="#rute" data-day="${d.n}"><span class="n" style="color:${d.n===2?"#0D0E0D":DAYC[d.n]}">0${d.n}</span><span><span class="t">${esc(d.title)}</span><br><span class="mono muted">${esc(d.dlabel)} · ${esc(d.level)}</span></span><span class="k">${d.km} KM<br>+${d.up} M</span></a>`).join("");
+  $("#homeLadder").innerHTML=DATA.days.map(d=>`<a href="#rute" data-day="${d.n}"><span class="n" style="color:${d.n===2?"#1B1411":DAYC[d.n]}">0${d.n}</span><span><span class="t">${esc(d.title)}</span><br><span class="mono muted">${esc(d.dlabel)} · ${esc(d.level)}</span></span><span class="k">${d.km} KM<br>+${d.up} M</span></a>`).join("");
 }
 
 /* ---------- RUTE ---------- */
@@ -100,7 +100,7 @@ function renderDay(){
   const d=DATA.days.find(x=>x.n===S.day),col=DAYC[d.n],fg=DAYFG[d.n],w=wxFor(d);
   const spots=DATA.spots.filter(s=>s.day===d.n).slice(0,4),ins=DATA.inspo.filter(s=>s.day===d.n);
   $("#dayPanel").innerHTML=`
-  <div class="dayhead"><div class="n" style="color:${d.n===2?"#0D0E0D":col}">0${d.n}</div><div><span class="mono">${esc(d.dlabel)} 2027</span><h2>${esc(d.title)}</h2></div></div>
+  <div class="dayhead"><div class="n" style="color:${d.n===2?"#1B1411":col}">0${d.n}</div><div><span class="mono">${esc(d.dlabel)} 2027</span><h2>${esc(d.title)}</h2></div></div>
   <div class="strip" style="background:${col};color:${fg}"><div><span>Level</span><b class="lv">${esc(d.level)}</b></div><div><span>Jarak</span><b>${d.km}<small style="font:700 12px var(--mono)"> KM</small></b></div><div><span>Nanjak</span><b>+${d.up}<small style="font:700 12px var(--mono)"> M</small></b></div></div>
   <div class="meters"><div><span class="mono">Capek ${d.capek}/5</span>${bars(d.capek)}</div><div><span class="mono">Seru ${d.seru}/5</span>${bars(d.seru)}</div></div>
   <p class="hook">${esc(d.hook)}</p>
@@ -171,13 +171,20 @@ function renderCrew(){
   $("#tallyTier").innerHTML=tl(tally("tier",["kere","rame","sultan"]),TIER);$("#tallyBike").innerHTML=tl(tally("bike",["bawa","sewa","tbd"]),BIKE);
   const isA=!!S.admin;
   $("#crewList").innerHTML=list.length?list.map(c=>{const fi=c.fin||{},fo=c.fout||{};
-    return `<div class="member"><div class="av" style="background:${c.status==="in"?"#C8F03C":c.status==="maybe"?"#F2A7C3":"#ECECE8"}">${esc((c.name||"?").trim().charAt(0).toUpperCase())}</div><div style="min-width:0"><h4>${esc(c.name)}${m&&c.id===m.id?' <span class="mono muted">· you</span>':""}</h4>
+    return `<div class="member"><div class="av" style="background:${c.status==="in"?"#F0D9A6":c.status==="maybe"?"#E9B8A8":"#F3EEE4"}">${esc((c.name||"?").trim().charAt(0).toUpperCase())}</div><div style="min-width:0"><h4>${esc(c.name)}${m&&c.id===m.id?' <span class="mono muted">· you</span>':""}</h4>
     <button class="wa" data-copy="${esc(prettyWa(c.wa))}" style="background:none;border:0;padding:0;cursor:pointer">${esc(prettyWa(c.wa))}</button> <a class="mono muted" href="https://wa.me/${esc(c.wa)}" target="_blank" rel="noopener">WA ↗</a>
     <div class="row"><span class="pill ${c.status==="in"?"ok":c.status==="maybe"?"wait":"no"}">${STAT[c.status]||"–"}</span>${dpPill(c)}${c.tier?`<span class="pill">${TIER[c.tier]}</span>`:""}${c.bike?`<span class="pill">${BIKE[c.bike]}</span>`:""}</div>
     <div class="fl">✈ ${fi.no?esc(fi.no)+" "+esc(fi.from||"")+" → KIX "+esc(fi.date||"")+" "+esc(fi.time||""):"Arrival: –"}<br>✈ ${fo.no?"KIX → "+esc(fo.to||"")+" "+esc(fo.no)+" "+esc(fo.date||"")+" "+esc(fo.time||""):"Departure: –"}<br>${c.fl_status==="booked"?'<span class="okc">Booked</span>':c.fl_status==="hold"?'<span class="warn">Looking</span>':'<span class="muted">Not booked</span>'} ${flightFlags(c)}</div>
     ${isA?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${dpState(c)!=="ok"?`<button class="btn small" data-markpaid="${esc(c.id)}">Mark DP paid</button>`:""}<button class="btn small ghost" data-delmember="${esc(c.id)}">Remove</button></div>`:""}</div></div>`}).join("")
     :`<div class="empty">${S.online?"Nobody yet. Be the first: join above.":"Crew list shows here once the app is connected."}</div>`;
   $("#adminBox").hidden=!isA;$("#adminLogin").hidden=isA||!S.online;
+  const seen=store.get("bobo.seen")||"",newJ=isA?list.filter(c=>String(c.created_at||"")>seen):[];
+  if(isA){const pc=list.filter(c=>dpState(c)==="wait").length,noDp=list.filter(c=>c.status==="in"&&dpState(c)!=="ok"&&dpState(c)!=="wait").length,noFl=list.filter(c=>c.status==="in"&&c.fl_status!=="booked").length;
+    const row=(n,t)=>`<li><span class="n ${n?"":"z"}">${n}</span>${t}</li>`;
+    $("#adminTodo").innerHTML=`<h3 class="disp" style="font-size:24px">Cek ini dulu · Your to-do</h3><ul style="list-style:none;margin:0;padding:0">${row(newJ.length,"new people joined since you last looked"+(newJ.length?": "+newJ.map(c=>esc(c.name)).join(", "):""))}${row(pc,"DP proofs waiting for you to verify (below)")}${row(noDp,"people who said Ikut but haven't paid DP yet")}${row(noFl,"people who said Ikut but haven't booked a flight")}</ul>${newJ.length?'<button class="btn small ghost" id="seenBtn" type="button" style="margin-top:8px">Got it, mark as seen</button>':'<p class="note" style="margin:8px 0 0">Nothing is sent to you automatically. Open the app to see this list.</p>'}`;
+    const sb=$("#seenBtn");if(sb)sb.onclick=()=>{const mx=list.reduce((x,c)=>String(c.created_at||"")>x?String(c.created_at):x,"");store.set("bobo.seen",mx);renderAll()};}
+  {const cl=document.querySelector('.tabs a[data-tab="crew"]');if(cl){let b=cl.querySelector(".badge");const cnt=isA?list.filter(c=>dpState(c)==="wait").length+newJ.length:0;if(cnt){if(!b){b=document.createElement("span");b.className="badge";cl.appendChild(b)}b.textContent=cnt}else if(b)b.remove()}}
+  $("#gate-steps").hidden=!!m||isA;
   if(isA){const pend=list.filter(c=>dpState(c)==="wait");
     $("#pending").innerHTML=pend.length?pend.map(c=>`<div class="proof"><a href="${esc(fileUrl(c.proof.path))}" target="_blank" rel="noopener"><img src="${esc(fileUrl(c.proof.path))}" alt="Proof from ${esc(c.name)}"></a><div><b>${esc(c.name)}</b><div class="mono">${rp(c.proof.amount)} · ${esc(String(c.proof.at||"").slice(0,10))}</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn small" data-verify="${esc(c.id)}">Verify</button><button class="btn small ghost" data-reject="${esc(c.id)}">Reject</button></div></div></div>`).join(""):`<p class="note" style="color:var(--ink);margin-top:8px">No pending proofs.</p>`}
 }
@@ -192,8 +199,8 @@ function renderWallet(){
   $("#wProgTxt").textContent=target?`${rp(ins)} collected of ${rp(target)} pool target (${n} ikut · ${TIER[tier]})`:"Pool target appears once people opt in.";
   $("#wGrid").innerHTML=`<div><span>Money in</span><b class="tabular">${rp(ins)}</b></div><div><span>Spent</span><b class="tabular">${rp(outs)}</b></div><div><span>Still to pay (bookings)</span><b class="tabular">${rp(unpaid)}</b></div><div><span>${saldo-unpaid<0?"Still to collect":"Left after bookings"}</span><b class="tabular" style="color:${saldo-unpaid<0?"var(--bad)":"inherit"}">${rp(Math.abs(saldo-unpaid))}</b></div>`;
   const byCat={};L.filter(t=>t.kind==="out").forEach(t=>byCat[t.cat||"Lain-lain"]=(byCat[t.cat||"Lain-lain"]||0)+(+t.amount||0));const tot=Object.values(byCat).reduce((a,b)=>a+b,0);
-  $("#wCat").innerHTML=tot?Object.entries(byCat).map(([k,v])=>`<i title="${esc(k)}" style="width:${v/tot*100}%;background:${CATC[k]||"#B9BAB4"}"></i>`).join(""):"";
-  $("#wCatLeg").innerHTML=tot?Object.entries(byCat).map(([k,v])=>`<span><i style="background:${CATC[k]||"#B9BAB4"}"></i>${esc(k)} ${jt(v)}</span>`).join(""):`<span class="muted">Nothing spent yet.</span>`;
+  $("#wCat").innerHTML=tot?Object.entries(byCat).map(([k,v])=>`<i title="${esc(k)}" style="width:${v/tot*100}%;background:${CATC[k]||"#C7BBA8"}"></i>`).join(""):"";
+  $("#wCatLeg").innerHTML=tot?Object.entries(byCat).map(([k,v])=>`<span><i style="background:${CATC[k]||"#C7BBA8"}"></i>${esc(k)} ${jt(v)}</span>`).join(""):`<span class="muted">Nothing spent yet.</span>`;
   const m=me(),isA=!!S.admin;
   $("#wTx").innerHTML=L.length?L.map(t=>`<li><div><b>${esc(t.label)}</b><div class="mono muted">${esc(t.cat||"")} · ${esc(t.date||"")}${t.by_name?" · by "+esc(t.by_name):""}${t.receipt?` · <a href="${esc(fileUrl(t.receipt))}" target="_blank" rel="noopener">Receipt ↗</a>`:""}</div>${isA?`<button class="mine" data-deltx="${esc(t.id)}">Delete</button>`:m&&t.member_id===m.id&&t.kind==="out"&&!t.dp_of?`<button class="mine" data-delmine="${esc(t.id)}">Delete mine</button>`:""}</div><div class="amt ${t.kind==="in"?"in":""}">${t.kind==="in"?"+":"−"}${rp(t.amount)}</div></li>`).join("")
     :`<li style="display:block"><div class="empty">No money yet. Verified DPs, booking payments and crew expenses will be listed here.</div></li>`;
