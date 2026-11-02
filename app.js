@@ -35,8 +35,12 @@ const admin=(action,payload)=>rpc("fn_admin",{p_code:S.admin,p_action:action,p_p
 async function load(){
   const [m,l,b,c,w]=await Promise.all([api("members?select=*&order=created_at"),api("ledger?select=*&order=date.desc,created_at.desc"),api("bookings?select=*&order=date"),api("config?select=*&id=eq.1"),api("weather?select=*")]);
   S.members=m||[];S.ledger=l||[];S.bookings=b||[];S.config=(c&&c[0])||{};S.weather={};(w||[]).forEach(x=>S.weather["d"+x.day]=x);
+  if(S.admin){try{const r=await rpc("fn_admin_seen",{p_code:S.admin});S.seen={};(r||[]).forEach(x=>S.seen[x.member_id]=x)}catch(_){}}
   S.state="ok";S.lastSync=new Date();
 }
+const _tch={};
+function touch(v){if(!S.wa||S.admin||!S.online)return;const k=v||"app",n=Date.now();if(_tch[k]&&n-_tch[k]<60000)return;_tch[k]=n;rpc("fn_touch",{p_wa:S.wa,p_view:v||null}).catch(()=>{})}
+function ago(d){if(!d)return"never";const m=Math.round((Date.now()-new Date(d))/6e4);if(m<2)return"just now";if(m<60)return m+" min ago";const h=Math.round(m/60);if(h<24)return h+" h ago";const dd=Math.round(h/24);return dd+(dd===1?" day ago":" days ago")}
 async function refresh(){if(!S.online)return;try{await load()}catch(e){S.state=S.state==="ok"?"stale":"err";console.warn(e)}renderAll()}
 async function shrink(file){ // compress photos to keep uploads small
   if(!file.type.startsWith("image/")||file.type==="image/gif")return file;
@@ -59,7 +63,7 @@ const VIEWS=["home","rute","crew","gear","dompet","spots","me","admin"];
 function route(){let v=(location.hash||"#home").slice(1);const toLogin=v==="login";if(toLogin)v="crew";if(!VIEWS.includes(v))v="home";
   VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});
   $$(".tabs a").forEach(a=>{if(a.dataset.tab===v)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
-  window.scrollTo(0,0);if(toLogin)setTimeout(()=>{const f=$("#loginForm");if(f&&!f.closest("[hidden]")){f.scrollIntoView({behavior:"smooth",block:"center"});$("#loginWa").focus()}},250)}
+  touch(v);window.scrollTo(0,0);if(toLogin)setTimeout(()=>{const f=$("#loginForm");if(f&&!f.closest("[hidden]")){f.scrollIntoView({behavior:"smooth",block:"center"});$("#loginWa").focus()}},250)}
 window.addEventListener("hashchange",route);
 
 /* ---------- time ---------- */
@@ -389,7 +393,10 @@ function renderAdmin(){
   $("#adminTodo").innerHTML=`<h3 class="disp" style="font-size:24px">Cek ini dulu · To-do</h3><ul style="list-style:none;margin:0;padding:0">
     ${row(pend.length,"screenshots waiting for you to approve")}${row(newJ.length,"new people since you last looked"+(newJ.length?": "+newJ.map(c=>esc(c.name)).join(", "):""))}
     ${row(unpaid.length,"joined but haven't sent the DP yet")}${row(going.length,"going (DP approved)")}</ul>
-    ${newJ.length?'<button class="btn small ghost" id="seenBtn" type="button" style="margin-top:8px">Got it, mark as seen</button>':'<p class="note" style="margin:8px 0 0">The app doesn\'t send notifications. Check this page once a day.</p>'}`;
+    ${newJ.length?'<button class="btn small ghost" id="seenBtn" type="button" style="margin-top:8px">Got it, mark as seen</button>':'<p class="note" style="margin:8px 0 0">No notifications. Check this page once a day.</p>'}`;
+  {const sn=S.seen||{},rows=list.map(c=>({c,s:sn[c.id]})).sort((a,b)=>(b.s?+new Date(b.s.last_seen):0)-(a.s?+new Date(a.s.last_seen):0));
+   const read=x=>{const v=(x.s&&x.s.views)||{};return ["home","rute","crew","gear","dompet"].filter(k=>v[k]).map(k=>k[0].toUpperCase()+k.slice(1)).join(" · ")||"–"};
+   $("#adminSeen").innerHTML=`<h3 class="disp" style="font-size:24px">Who's opened it</h3><p class="note" style="margin:4px 0 8px">Logged-in crew only. Your own visits aren't counted.</p>`+(rows.length?rows.map(x=>`<div class="acard" style="padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.c.name)}</b><span class="mono">${x.s?esc(ago(x.s.last_seen)):"Not opened yet"}</span></div>${x.s?`<div class="mono" style="margin-top:4px">${x.s.opens}× opened · saw: ${esc(read(x))}${x.c.prefs&&(x.c.prefs.dates||[]).length?" · voted ✓":" · no vote yet"}</div>`:""}</div>`).join(""):`<p class="note">Nobody yet.</p>`)}
   const toApprove=pend.concat(unpaid);
   $("#approveList").innerHTML=toApprove.length?toApprove.map(c=>{const pr=c.proof&&c.proof.status==="pending"?c.proof:null;
     return `<div class="acard"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h4>${esc(c.name)}</h4>${stagePill(c)}</div>
@@ -597,5 +604,5 @@ renderDayChips();renderDay();renderSpots();
 if(!S.online)S.state="off";
 renderAll();tick();setInterval(tick,1000);
 if(S.online){refresh();setInterval(()=>{if(!document.hidden)refresh()},20000)}
-checkVersion();setInterval(checkVersion,300000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkVersion()});
+checkVersion();setInterval(checkVersion,300000);document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkVersion();touch((location.hash||"#home").slice(1))}});
 })();
