@@ -87,7 +87,7 @@ const dpAmount=()=>+S.config.dp||DATA.dp;
 /* ---------- HOME ---------- */
 const PERSON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5"/></svg>`;
 function renderHello(){const m=me(),el=$("#hello");$("#helloWrap").hidden=!m;$("#nextMs").hidden=!!m;if(!m)return;
-  const now=new Date(),sg=stage(m),g=gearOf(m),packed=packedOf(m),nx=DATA.milestones.find(x=>new Date(x.at)>now);
+  const now=new Date(),sg=stage(m),g=gearOf(m),packed=packedOf(m),nx=DATA.milestones.find(x=>new Date(x.at)>now&&!(x.kind==="dp"&&sg!=="joined"));
   const dleft=d=>{const n=Math.ceil((new Date(d)-now)/864e5);return n<=0?"today":n===1?"tomorrow":n+" days left"};
   const dp=DATA.milestones.find(x=>x.kind==="dp"),fl=DATA.milestones.find(x=>x.kind==="flight"),bk=DATA.milestones.find(x=>x.kind==="bike");
   const A=[];
@@ -102,11 +102,18 @@ function renderHello(){const m=me(),el=$("#hello");$("#helloWrap").hidden=!m;$("
   const todo=A.filter(a=>!a.done),done=A.filter(a=>a.done);
   const li=a=>`<li class="${a.done?"done":""}"><span class="ck">${a.done?"✓":a.wait?"…":""}</span><span><b>${esc(a.t)}</b>${a.s?`<small>${esc(a.s)}</small>`:""}</span>${a.href&&!a.done?`<a class="btn small" href="${a.href}">${a.cta}</a>`:"<span></span>"}</li>`;
   const today=now.toLocaleDateString("en-GB",{timeZone:"Asia/Makassar",weekday:"long",day:"numeric",month:"long"});
-  el.innerHTML=`<div class="hd">${avatar(m)}<div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(m.name.split(" ")[0])}</h3></div></div>
+  el.innerHTML=`<div class="hd">${avatar(m)}<div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(fname(m.name))}</h3></div></div>
    ${nx?`<div class="today">Next deadline: ${esc(nx.title)} · ${esc(fmtDate(nx.at,{weekday:"short"}))} (${dleft(nx.at)})</div>`:""}
    <ul>${todo.map(li).join("")}${done.map(li).join("")}</ul>`;
 }
-function renderHome(){renderHello();
+function renderVote(){const el=$("#voteCard"),act=S.state==="ok"?active():[],lock=DATA.milestones.find(x=>x.kind==="lock"),m=me();
+  const rows=DATA.tripDates.map(d=>({d,who:act.filter(c=>((c.prefs||{}).dates||[]).includes(d.id))}));
+  const mx=Math.max(1,...rows.map(r=>r.who.length)),top=Math.max(0,...rows.map(r=>r.who.length));
+  const days=lock?Math.ceil((new Date(lock.at)-Date.now())/864e5):0;
+  el.innerHTML=`<div class="vh"><h3>Dates vote</h3><span>${act.length} voted${lock&&days>0?`<br>closes ${esc(fmtDate(lock.at,{weekday:"short"}))} · ${days}d`:""}</span></div>
+   <ol>${rows.map(r=>`<li class="${top>0&&r.who.length===top?"lead":""}"><div class="t"><b>${esc(r.d.label.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /g,""))}</b><span class="n">${r.who.length} ${r.who.length===1?"vote":"votes"}</span></div><div class="bar"><i style="width:${r.who.length/mx*100}%"></i></div><small>${esc(r.d.sub)}</small>${r.who.length?`<div class="who">${r.who.map(c=>esc(fname(c.name))).join(", ")}</div>`:""}</li>`).join("")}</ol>
+   <div class="ft">${m?`<a class="btn small ghost" href="#me" data-editdates="1">Change my dates</a>`:`<a class="btn small" href="#crew">Join + vote</a>`}<span class="note" style="margin:0">Pick all dates that work. Most votes wins.</span></div>`}
+function renderHome(){renderHello();renderVote();
   const now=Date.now(),nx=DATA.milestones.find(m=>new Date(m.at)>now),m=me();
   const sg=m?stage(m):"";const cta=!S.online?`<a class="btn" href="#crew">How to join</a>`:!m?`<a class="btn" href="#crew">Join now · 2 min</a>`:sg==="going"?`<span class="pill ok">You're going ✓</span>`:sg==="pending"?`<span class="pill wait">DP sent · waiting for George</span>`:`<a class="btn" href="#crew">Pay the DP</a>`;
   $("#nextMs").innerHTML=nx?`<div class="pad"><span class="mono">Next · ${esc(fmtDate(nx.at,{weekday:"short"}))}</span><h3>${esc(nx.title)}</h3><div class="left tabular" id="nmLeft"></div><p>${esc(nx.text)}</p><div>${cta}</div></div>`:"";
@@ -176,6 +183,8 @@ function segSet(id,v){$$("#"+id+" button").forEach(b=>b.setAttribute("aria-press
 const STAGE={joined:["Pending · DP not paid","no"],pending:["Pending · DP being checked","wait"],going:["Going ✓","ok"],out:["Not going","no"]};
 const stagePill=c=>{const s=STAGE[stage(c)];return `<span class="pill ${s[1]}">${s[0]}</span>`};
 const P=c=>c.prefs||{};
+function fname(n){const w=String(n||"").trim().split(/\s+/);return /^(om|tante|pak|bu|ibu|bapak|ko|koh|ci|cik|mas|mbak|kak|bang)$/i.test(w[0])&&w[1]?w[0]+" "+w[1]:w[0]}
+const fdate=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}):"";
 const dShort=id=>{const d=DATA.tripDates.find(x=>x.id===id);return d?d.label.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /g,""):id};
 const lab=(map,k)=>k&&map[k]?map[k][0]:"–";
 function partyText(c){const p=P(c);if(!p.party)return "–";if(p.party==="solo")return "Alone";return PARTY[p.party][0]+" · +"+(p.extra||1)+" ("+(RIDERS[p.riders]||"?")+")"}
@@ -219,7 +228,8 @@ function complain(p,miss){toast("Please fill in: "+miss.map(x=>x[1]).join(", "))
 function answersDl(c){const p=P(c),fi=c.fin||{},fo=c.fout||{};
   const rows=[["Dates",(p.dates||[]).map(dShort).join(", ")||"–"],["Budget",(p.budget||[]).map(t=>TIER[t]).join(", ")||"–"],["Sleep",lab(STAY,p.stay)],["Sepeda",lab(BIKEQ,c.bike)],
     ["Stuff",lab(BAGS,p.bags)],["Coming",partyText(c)],["Airline",p.airline||"–"]];
-  if(fi.no||fo.no)rows.push(["Flights",`${esc(fi.no||"?")} arr ${esc(fi.date||"")} ${esc(fi.time||"")} · ${esc(fo.no||"?")} dep ${esc(fo.date||"")} ${esc(fo.time||"")} · ${c.fl_status==="booked"?"booked":"not booked"}`]);
+  if(fi.no||fo.no){const leg=(x,lbl)=>x.no?`${lbl} ${esc(x.no)}${x.date?" · "+esc(fdate(x.date)):""}${x.time?" "+esc(x.time):""}`:`${lbl} not added`;
+    rows.push(["Flights",`${leg(fi,"Land KIX")}<br>${leg(fo,"Leave KIX")}<br>${c.fl_status==="booked"?"✓ booked":c.fl_status==="hold"?"looking":"not booked yet"}`])}
   return `<dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${k==="Flights"?v:esc(v)}</dd>`).join("")}</dl>`}
 let edDirty=false;
 function tl(o,labels){const mx=Math.max(1,...Object.values(o));return Object.entries(o).map(([k,v])=>`<div class="r"><span>${esc(labels[k]||k)}</span><span class="b"><i style="width:${v/mx*100}%"></i></span><span>${v}</span></div>`).join("")}
@@ -241,7 +251,7 @@ function renderCrew(){
     $("#meTrack").innerHTML=sg==="out"?`<div class="now" style="grid-column:1/-1"><b>Not going</b>You said you can't make it</div>`
       :[["Joined ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
     $("#meBanner").hidden=!S.justJoined;
-    if(S.justJoined)$("#meBanner").innerHTML=`<b>✓ Application received</b>You're registered, ${esc(m.name.split(" ")[0])}. Your status stays <b style="display:inline;font:inherit;text-transform:none">Pending</b> until your DP is paid and George approves it.`;
+    if(S.justJoined)$("#meBanner").innerHTML=`<b>✓ Application received</b>You're registered, ${esc(fname(m.name))}. Your status stays <b style="display:inline;font:inherit;text-transform:none">Pending</b> until your DP is paid and George approves it.`;
     const gw=S.config.admin_wa,pr=P(m);
     const msg=sg==="joined"?`Halo George, aku ${m.name} sudah daftar Bobo Bareng Jepang 🚴\nTanggal: ${(pr.dates||[]).map(dShort).join(", ")}\nBudget: ${(pr.budget||[]).map(t=>TIER[t]).join(", ")}\nDP Rp 3 jt segera aku transfer ke BCA.`
       :sg==="pending"?`Halo George, DP ${rp(dpAmount())} Bobo Bareng Jepang sudah aku transfer dan screenshot sudah aku upload di app. Tolong dicek ya 🙏\n- ${m.name}`:"";
@@ -313,7 +323,7 @@ function renderGear(){
   const claims={};list.forEach(c=>((gearOf(c).shared)||[]).forEach(id=>(claims[id]=claims[id]||[]).push(c)));
   const mine=m?((myGear||gearOf(m)).shared||[]):[];
   $("#sharedList").innerHTML=GROUP.map(([id,name,note])=>{const who=(claims[id]||[]).filter(c=>!m||c.id!==m.id);if(mine.includes(id)&&m)who.unshift(m);
-    return `<div class="gi ${who.length?"on":""}"><span style="flex:1;min-width:0"><b>${esc(name)}</b><small>${note?esc(note)+" · ":""}${who.length?"Bringing: "+who.map(c=>esc(c.name.split(" ")[0])).join(", "):"Nobody yet"}</small></span>${m?`<button class="btn small ${mine.includes(id)?"":"ghost"}" type="button" data-gs="${id}">${mine.includes(id)?"I'm bringing ✓":"I'll bring it"}</button>`:""}</div>`}).join("");
+    return `<div class="gi ${who.length?"on":""}"><span style="flex:1;min-width:0"><b>${esc(name)}</b><small>${note?esc(note)+" · ":""}${who.length?"Bringing: "+who.map(c=>esc(fname(c.name))).join(", "):"Nobody yet"}</small></span>${m?`<button class="btn small ${mine.includes(id)?"":"ghost"}" type="button" data-gs="${id}">${mine.includes(id)?"I'm bringing ✓":"I'll bring it"}</button>`:""}</div>`}).join("");
   $("#gearCount").textContent=list.length?`${list.length} riders`:"";
   $("#crewWall").innerHTML=list.length?list.map(c=>{const g=gearOf(c),n=packedOf(c);
     return `<button class="wcard" type="button" data-prof="${esc(c.id)}">${g.bikePhoto?`<img class="wbike" src="${esc(fileUrl(g.bikePhoto))}" alt="" loading="lazy">`:`<span class="wbike none">${c.bike==="sewa"?"Sewa bike":"No bike photo"}</span>`}
@@ -416,8 +426,9 @@ function clean(ids){ids.forEach(i=>{const el=document.getElementById(i);if(el)de
 
 function bind(){
   document.addEventListener("click",e=>{
-    const t=e.target.closest("[data-goday],[data-d],[data-day],[data-st],[data-sd],[data-spotday],[data-copy],[data-approve],[data-unapprove],[data-reject],[data-delmember],[data-deltx],[data-delmine],[data-ri],.stop,.rt-hit");
+    const t=e.target.closest("[data-editdates],[data-goday],[data-d],[data-day],[data-st],[data-sd],[data-spotday],[data-copy],[data-approve],[data-unapprove],[data-reject],[data-delmember],[data-deltx],[data-delmine],[data-ri],.stop,.rt-hit");
     if(!t)return;
+    if(t.dataset.editdates){setTimeout(()=>{const b=$("#ansBox");if(b){b.open=true;b.scrollIntoView({behavior:"smooth",block:"start"})}},250)}
     if(t.dataset.ri!==undefined){const x=IDX[+t.dataset.ri];$("#search").hidden=true;if(x&&x.go){e.preventDefault();x.go()}return}
     if(t.classList.contains("stop")){openStop(t.dataset.stop);return}
     if(t.classList.contains("rt-hit")){setDay(+t.dataset.day);$("#dayPanel").scrollIntoView({behavior:"smooth",block:"start"});return}
@@ -429,10 +440,10 @@ function bind(){
     if(t.dataset.spotday){S.spotDay=+t.dataset.spotday;S.spotType="all";renderSpots();return}
     if(t.dataset.copy){copy(t.dataset.copy,"Number copied");return}
     if(t.dataset.approve){const c=S.members.find(x=>x.id===t.dataset.approve);if(!c)return;t.disabled=true;
-      waTo(c.wa,`Halo ${c.name.split(" ")[0]}! DP Bobo Bareng Jepang kamu sudah aku terima ✓\nStatus kamu sekarang: GOING 🚴\nCek app: ${appUrl()}#crew`);
+      waTo(c.wa,`Halo ${fname(c.name)}! DP Bobo Bareng Jepang kamu sudah aku terima ✓\nStatus kamu sekarang: GOING 🚴\nCek app: ${appUrl()}#crew`);
       const hasProof=c.proof&&c.proof.status==="pending";act(()=>hasProof?admin("verify_dp",{member_id:c.id}):admin("mark_dp_paid",{member_id:c.id,amount:dpAmount()}),c.name+" is Going ✓ · DP added to the Dompet");return}
     if(t.dataset.unapprove){if(t.dataset.armed){act(()=>admin("unverify_dp",{member_id:t.dataset.unapprove}),"Approval undone. DP removed from the Dompet.")}else{t.dataset.armed="1";t.textContent="Tap again to undo"}return}
-    if(t.dataset.reject){if(t.dataset.armed){const c=S.members.find(x=>x.id===t.dataset.reject);if(c)waTo(c.wa,`Halo ${c.name.split(" ")[0]}, aku belum nemu transfer DP Bobo Bareng kamu di BCA. Boleh kirim ulang screenshot-nya atau cek lagi transfernya? 🙏`);act(()=>admin("reject_dp",{member_id:t.dataset.reject}),"Sent back. They'll see a note to re-upload or WhatsApp you.")}else{t.dataset.armed="1";t.textContent="Tap again to send back"}return}
+    if(t.dataset.reject){if(t.dataset.armed){const c=S.members.find(x=>x.id===t.dataset.reject);if(c)waTo(c.wa,`Halo ${fname(c.name)}, aku belum nemu transfer DP Bobo Bareng kamu di BCA. Boleh kirim ulang screenshot-nya atau cek lagi transfernya? 🙏`);act(()=>admin("reject_dp",{member_id:t.dataset.reject}),"Sent back. They'll see a note to re-upload or WhatsApp you.")}else{t.dataset.armed="1";t.textContent="Tap again to send back"}return}
     if(t.dataset.delmember){if(t.dataset.armed){act(()=>admin("member_delete",{id:t.dataset.delmember}),"Removed.")}else{t.dataset.armed="1";t.textContent="Tap again to remove"}return}
     if(t.dataset.deltx){if(t.dataset.armed){act(()=>admin("ledger_delete",{id:t.dataset.deltx}),"Deleted.")}else{t.dataset.armed="1";t.textContent="Tap again to delete"}return}
     if(t.dataset.delmine){if(t.dataset.armed){act(()=>rpc("fn_delete_expense",{p_wa:S.wa,p_id:t.dataset.delmine}),"Deleted.")}else{t.dataset.armed="1";t.textContent="Tap again to delete"}return}
