@@ -291,10 +291,10 @@ h1,h2,h3,h4{margin:0;text-wrap:balance} p{margin:0}
 .opts b{display:block;font-weight:800;line-height:1.2}
 .opts small{display:block;font-size:13px;color:var(--ink2);margin-top:2px;line-height:1.3}
 .callout{border:2px solid var(--ink);background:var(--cobalt);color:#fff;padding:10px 12px;font-weight:700}
-.track{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--ink);margin-top:12px}
+.track{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:2px solid var(--ink);margin-top:12px}
 .track div{padding:10px 8px;border-right:2px solid var(--ink);font:700 11px/1.2 var(--mono);text-transform:uppercase;background:var(--white);color:var(--ink2)}
 .track div:last-child{border-right:0}
-.track div b{display:block;font:900 italic 20px/1 var(--disp);font-stretch:80%;margin-bottom:4px}
+.track div b{display:block;overflow-wrap:anywhere;font:900 italic 17px/1 var(--disp);font-stretch:80%;margin-bottom:4px}
 .track div.done{background:var(--lime);color:var(--ink)}
 .track div.now{background:var(--cobalt);color:#fff}
 .acard{border:2px solid var(--ink);background:var(--white);padding:12px;margin-top:10px}
@@ -307,6 +307,15 @@ h1,h2,h3,h4{margin:0;text-wrap:balance} p{margin:0}
 .sub .btn{margin-left:auto}
 .ah{font:900 italic 24px/1 var(--disp);font-stretch:80%;align-items:center;border-bottom:2px solid var(--ink);padding-bottom:8px;text-transform:uppercase}.ah a{font:700 11.5px/1 var(--mono)}
 .member .meta{font-size:13.5px;color:var(--ink2);margin-top:6px;line-height:1.4}
+#meBox,#v-crew .box{scroll-margin-top:90px}
+.okbanner{border:2px solid var(--ink);background:var(--ok);color:#fff;padding:14px 16px;margin-bottom:14px}
+.okbanner b{display:block;font:900 italic 26px/1 var(--disp);font-stretch:80%;text-transform:uppercase;margin-bottom:6px}
+.bank{border:2px solid var(--ink);background:var(--forest);color:var(--lime);margin-top:12px}
+.bank .r{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px;padding:12px 14px;border-bottom:2px solid var(--lime)}
+.bank .r:last-child{border-bottom:0}
+.bank .r span{grid-column:1/-1;font:700 11px/1 var(--mono);text-transform:uppercase;color:#fff;opacity:.85}
+.bank .r b{font:900 italic clamp(26px,8vw,38px)/1 var(--disp);font-stretch:74%;overflow-wrap:anywhere}
+.bank .r .btn{background:var(--lime);color:var(--ink);border-color:var(--lime)}
 </style>
 </head>
 <body>
@@ -370,7 +379,7 @@ h1,h2,h3,h4{margin:0;text-wrap:balance} p{margin:0}
     <div id="regBox" hidden>
       <ol class="steps">
         <li><b class="k">1</b><div><b>Fill the form below</b><span class="note">2 minutes: dates, budget, bike, stay, luggage, who's coming.</span></div></li>
-        <li><b class="k">2</b><div><b>Pay the DP, upload the screenshot</b><span class="note">BCA transfer, or ask George for a QRIS. Your status becomes <b>Pending</b>.</span></div></li>
+        <li><b class="k">2</b><div><b>Transfer the Rp 3 jt DP, upload the screenshot</b><span class="note"><b>BCA 8400064491 a/n George Widodo</b> (or ask George for a QRIS). Your status shows <b>Pending</b>.</span></div></li>
         <li><b class="k">3</b><div><b>George checks BCA and approves</b><span class="note">Your status becomes <b>Going ✓</b>. That's it.</span></div></li>
       </ol>
       <form class="box pad form" id="regForm" style="margin-top:14px" novalidate>
@@ -387,28 +396,23 @@ h1,h2,h3,h4{margin:0;text-wrap:balance} p{margin:0}
     </div>
 
     <div id="meBox" hidden>
+      <div class="okbanner" id="meBanner" hidden></div>
       <div class="box pad">
         <span class="mono muted">Your status</span><h3 class="disp" id="meName" style="font-size:34px;overflow-wrap:anywhere"></h3>
         <div class="track" id="meTrack"></div>
         <p id="meNext" style="margin-top:12px;font-weight:600"></p>
+        <a class="btn small dark" id="waGeorge" hidden target="_blank" rel="noopener" style="margin-top:10px">Tell George on WhatsApp</a>
       </div>
 
       <div class="box pad" style="margin-top:14px" id="dpBox">
         <h3 class="disp" style="font-size:30px">Pay the DP</h3>
-        <div class="pay" style="margin-top:12px">
-          <span class="mono muted">Amount</span>
-          <div class="amount tabular" id="dpAmt">Rp 3.000.000</div>
-          <div class="acct">
-            <div><span class="mono muted">Transfer to</span><b id="bankName">BCA</b></div>
-            <div><span class="mono muted">Account no.</span><b class="tabular" id="bankAcct">8400064491</b></div>
-            <div><span class="mono muted">Name</span><b id="bankHolder">George Widodo</b></div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-            <button class="btn small" type="button" id="copyAcct">Copy account no.</button>
-            <button class="btn small ghost" type="button" id="copyAmt">Copy amount</button>
-            <a class="btn small dark" id="qrisBtn" hidden target="_blank" rel="noopener">Prefer QRIS? Ask George</a>
-          </div>
+        <div class="bank">
+          <div class="r"><span>Amount</span><b class="tabular" id="dpAmt">Rp 3.000.000</b><button class="btn small ghost" type="button" id="copyAmt">Copy</button></div>
+          <div class="r"><span>Bank</span><b id="bankName">BCA</b></div>
+          <div class="r"><span>Account no.</span><b class="tabular" id="bankAcct">8400064491</b><button class="btn small" type="button" id="copyAcct">Copy</button></div>
+          <div class="r"><span>Account name</span><b id="bankHolder">George Widodo</b></div>
         </div>
+        <p class="note" style="margin-top:10px">Transfer from any bank app. Prefer QRIS? <a id="qrisBtn" hidden target="_blank" rel="noopener"><b>Ask George for one on WhatsApp</b></a><span id="qrisNo">Ask George for one on WhatsApp.</span> Each QRIS code works only once.</p>
         <div class="form" style="margin-top:16px" id="proofForm">
           <div class="field"><label for="proofFile">Then upload your transfer screenshot</label><input id="proofFile" type="file" accept="image/*"></div>
           <button class="btn" type="button" id="proofBtn">Send screenshot</button>
@@ -477,7 +481,7 @@ h1,h2,h3,h4{margin:0;text-wrap:balance} p{margin:0}
       <div class="todo" id="adminTodo"></div>
 
       <div class="sub ah" style="margin-top:22px"><span>1 · Approve DP</span></div>
-      <p class="note" style="color:var(--ink);margin:0 0 4px">Open BCA → find the transfer from this person → tap <b>Approve</b>. They become <b>Going</b> and the money shows in the Dompet. Paid cash or sent no screenshot? Approve works the same.</p>
+      <p class="note" style="color:var(--ink);margin:0 0 4px">Open BCA → find the transfer from this person → tap <b>Approve</b>. They become <b>Going</b>, the money shows in the Dompet, and <b>WhatsApp opens with a confirmation message ready for them</b>. Just tap send. Paid cash or sent no screenshot? Approve works the same.</p>
       <div id="approveList"></div>
 
       <div class="sub ah" style="margin-top:26px"><span>2 · Everyone's answers</span><button class="btn small ghost" id="csvBtn" type="button">Download CSV</button></div>

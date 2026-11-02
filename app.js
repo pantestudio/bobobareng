@@ -53,7 +53,7 @@ const fileUrl=p=>p?CFG.url+"/storage/v1/object/public/uploads/"+p:"";
 let toastT;
 function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2800)}
 async function act(fn,okMsg){try{const r=await fn();await refresh();if(okMsg)toast(okMsg);return r}catch(e){
-  const m=String(e.message||"");toast(m.includes("not_admin")?"Admin code is wrong.":m.includes("not_member")?"Log in first.":m.includes("wa_check")||m.includes("members_wa_check")?"Check the WhatsApp number.":m.includes("duplicate")?"That WhatsApp number is already used.":"Couldn't save. Check your connection and try again.");console.warn(e)}}
+  const m=String(e.message||"");toast(m.includes("not_admin")?"Admin code is wrong.":m.includes("not_member")?"Log in first.":m.includes("wa_check")?"That WhatsApp number didn't work. Type it like 0812 3456 7890, or with the country code like +65 9123 4567.":m.includes("duplicate")?"That WhatsApp number is already used.":"Couldn't save. Check your connection and try again.");console.warn(e)}}
 
 /* ---------- routing ---------- */
 const VIEWS=["home","rute","crew","dompet","spots","admin"];
@@ -153,7 +153,7 @@ function normWa(v){let d=String(v||"").replace(/\D/g,"");if(d.startsWith("0"))d=
 function prettyWa(d){d=String(d||"");return d?"+"+d.slice(0,2)+" "+d.slice(2).replace(/(\d{3,4})(?=\d)/g,"$1 ").trim():""}
 function setVal(id,v){const el=document.getElementById(id);if(el&&document.activeElement!==el&&!el.dataset.dirty)el.value=v??""}
 function segSet(id,v){$$("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===v)))}
-const STAGE={joined:["Joined","no"],pending:["Pending","wait"],going:["Going ✓","ok"],out:["Not going","no"]};
+const STAGE={joined:["Pending · DP not paid","no"],pending:["Pending · DP being checked","wait"],going:["Going ✓","ok"],out:["Not going","no"]};
 const stagePill=c=>{const s=STAGE[stage(c)];return `<span class="pill ${s[1]}">${s[0]}</span>`};
 const P=c=>c.prefs||{};
 const dShort=id=>{const d=DATA.tripDates.find(x=>x.id===id);return d?d.label.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /g,""):id};
@@ -213,13 +213,20 @@ function renderCrew(){
   $("#meBox").hidden=!m;
   if(m){const sg=stage(m),idx=sg==="going"?2:sg==="pending"?1:0;
     $("#meName").textContent=m.name;
+    const ix=sg==="going"?3:sg==="pending"?2:1;
     $("#meTrack").innerHTML=sg==="out"?`<div class="now" style="grid-column:1/-1"><b>Not going</b>You said you can't make it</div>`
-      :[["Joined","Form done"],["Pending","DP sent, being checked"],["Going ✓","Approved"]].map((s,i)=>`<div class="${i<idx?"done":i===idx?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
-    $("#meNext").textContent=sg==="joined"?(dpState(m)==="rej"?"George couldn't match your screenshot. Upload a clearer one below, or WhatsApp him.":"Next: pay the DP below and upload the screenshot.")
-      :sg==="pending"?"Screenshot received. George is checking BCA. Nothing else to do for now.":sg==="going"?"You're going! Add your flight below once you've booked it.":"Changed your mind? Open My answers and tap “I'm back in”.";
+      :[["Registered ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
+    $("#meBanner").hidden=!S.justJoined;
+    if(S.justJoined)$("#meBanner").innerHTML=`<b>✓ Application received</b>You're registered, ${esc(m.name.split(" ")[0])}. Your status stays <b style="display:inline;font:inherit;text-transform:none">Pending</b> until your DP is paid and George approves it.`;
+    const gw=S.config.admin_wa,pr=P(m);
+    const msg=sg==="joined"?`Halo George, aku ${m.name} sudah daftar Bobo Bareng Jepang 🚴\nTanggal: ${(pr.dates||[]).map(dShort).join(", ")}\nBudget: ${(pr.budget||[]).map(t=>TIER[t]).join(", ")}\nDP Rp 3 jt segera aku transfer ke BCA.`
+      :sg==="pending"?`Halo George, DP ${rp(dpAmount())} Bobo Bareng Jepang sudah aku transfer dan screenshot sudah aku upload di app. Tolong dicek ya 🙏\n- ${m.name}`:"";
+    $("#waGeorge").hidden=!(gw&&msg);if(gw&&msg){$("#waGeorge").href=`https://wa.me/${gw}?text=${encodeURIComponent(msg)}`;$("#waGeorge").textContent=sg==="joined"?"Tell George you've joined (WhatsApp)":"Tell George you've paid (WhatsApp)"}
+    $("#meNext").textContent=sg==="joined"?(dpState(m)==="rej"?"George couldn't find your transfer in BCA. Upload a clearer screenshot below, or WhatsApp him.":"Next: transfer the DP to the BCA account below, then upload the screenshot.")
+      :sg==="pending"?"Screenshot received. George is checking BCA. You'll get a WhatsApp from him once you're approved.":sg==="going"?"You're going! Add your flight below once you've booked it.":"Changed your mind? Open My answers and tap “I'm back in”.";
     $("#dpBox").hidden=sg==="going"||sg==="out";
     $("#proofForm").hidden=sg!=="joined";
-    const wa=S.config.admin_wa;$("#qrisBtn").hidden=!wa;
+    const wa=S.config.admin_wa;$("#qrisBtn").hidden=!wa;$("#qrisNo").hidden=!!wa;
     if(wa)$("#qrisBtn").href=`https://wa.me/${wa}?text=${encodeURIComponent(`Halo George, minta QRIS DP Bobo Bareng Jepang ${rp(dpAmount())} a/n ${m.name} 🙏`)}`;
     $("#ansSum").innerHTML=`<div class="acard" style="margin-top:0">${answersDl(m)}</div>`;
     if(!edDirty)fillQ("ed",m);
@@ -323,6 +330,8 @@ function doSearch(){const q=$("#q").value.trim().toLowerCase(),out=q?IDX.filter(
     :`<p class="note" style="margin-top:16px">Try: onsen · mochi · Kuragari · Day 3 · DP · a crew name</p>`}
 
 /* ---------- actions ---------- */
+const appUrl=()=>location.origin+location.pathname;
+function waTo(wa,text){try{window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`,"_blank","noopener")}catch(_){}}
 const upMe=patch=>rpc("fn_update_me",{p_wa:S.wa,p_patch:patch});
 const num=v=>+String(v||"").replace(/\D/g,"")||0;
 function copy(text,label){(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast((label||"Copied")+": "+text),()=>toast(text))}
@@ -343,9 +352,10 @@ function bind(){
     if(t.dataset.spotday){S.spotDay=+t.dataset.spotday;S.spotType="all";renderSpots();return}
     if(t.dataset.copy){copy(t.dataset.copy,"Number copied");return}
     if(t.dataset.approve){const c=S.members.find(x=>x.id===t.dataset.approve);if(!c)return;t.disabled=true;
+      waTo(c.wa,`Halo ${c.name.split(" ")[0]}! DP Bobo Bareng Jepang kamu sudah aku terima ✓\nStatus kamu sekarang: GOING 🚴\nCek app: ${appUrl()}#crew`);
       const hasProof=c.proof&&c.proof.status==="pending";act(()=>hasProof?admin("verify_dp",{member_id:c.id}):admin("mark_dp_paid",{member_id:c.id,amount:dpAmount()}),c.name+" is Going ✓ · DP added to the Dompet");return}
     if(t.dataset.unapprove){if(t.dataset.armed){act(()=>admin("unverify_dp",{member_id:t.dataset.unapprove}),"Approval undone. DP removed from the Dompet.")}else{t.dataset.armed="1";t.textContent="Tap again to undo"}return}
-    if(t.dataset.reject){if(t.dataset.armed){act(()=>admin("reject_dp",{member_id:t.dataset.reject}),"Sent back. They'll see a note to re-upload or WhatsApp you.")}else{t.dataset.armed="1";t.textContent="Tap again to send back"}return}
+    if(t.dataset.reject){if(t.dataset.armed){const c=S.members.find(x=>x.id===t.dataset.reject);if(c)waTo(c.wa,`Halo ${c.name.split(" ")[0]}, aku belum nemu transfer DP Bobo Bareng kamu di BCA. Boleh kirim ulang screenshot-nya atau cek lagi transfernya? 🙏`);act(()=>admin("reject_dp",{member_id:t.dataset.reject}),"Sent back. They'll see a note to re-upload or WhatsApp you.")}else{t.dataset.armed="1";t.textContent="Tap again to send back"}return}
     if(t.dataset.delmember){if(t.dataset.armed){act(()=>admin("member_delete",{id:t.dataset.delmember}),"Removed.")}else{t.dataset.armed="1";t.textContent="Tap again to remove"}return}
     if(t.dataset.deltx){if(t.dataset.armed){act(()=>admin("ledger_delete",{id:t.dataset.deltx}),"Deleted.")}else{t.dataset.armed="1";t.textContent="Tap again to delete"}return}
     if(t.dataset.delmine){if(t.dataset.armed){act(()=>rpc("fn_delete_expense",{p_wa:S.wa,p_id:t.dataset.delmine}),"Deleted.")}else{t.dataset.armed="1";t.textContent="Tap again to delete"}return}
@@ -360,7 +370,7 @@ function bind(){
 
   $("#regForm").addEventListener("submit",e=>{e.preventDefault();const {q,miss}=readQ("reg");if(miss.length){complain("reg",miss);return}
     const btn=$("#regForm button[type=submit]");btn.disabled=true;
-    act(async()=>{const r=await rpc("fn_login",{p_name:q.name,p_wa:q.wa});S.wa=r.wa;store.set("bobo.wa",r.wa);await upMe({name:q.name,status:"in",bike:q.bike,prefs:q.prefs});window.scrollTo(0,0)},"You're in! Next: pay the DP.").finally(()=>btn.disabled=false)});
+    act(async()=>{const r=await rpc("fn_login",{p_name:q.name,p_wa:q.wa});S.wa=r.wa;store.set("bobo.wa",r.wa);await upMe({name:q.name,status:"in",bike:q.bike,prefs:q.prefs});S.justJoined=true},"Application received ✓").then(()=>{if(S.justJoined)$("#meBox").scrollIntoView({behavior:"smooth",block:"start"})}).finally(()=>btn.disabled=false)});
   $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();const wa=normWa($("#loginWa").value);if(wa.length<10){toast("Check the WhatsApp number");return}
     try{const r=await rpc("fn_login",{p_name:"",p_wa:wa});S.wa=r.wa;store.set("bobo.wa",r.wa);await refresh();toast("Welcome back, "+r.name)}
     catch(_){toast("That number hasn't joined yet. Fill the form above.")}});
