@@ -86,13 +86,13 @@ const dpAmount=()=>+S.config.dp||DATA.dp;
 
 /* ---------- HOME ---------- */
 const PERSON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5"/></svg>`;
-function renderHello(){const m=me(),el=$("#hello");if(!m){el.hidden=true;return}
+function renderHello(){const m=me(),el=$("#hello");$("#helloWrap").hidden=!m;$("#nextMs").hidden=!!m;if(!m)return;
   const now=new Date(),sg=stage(m),g=gearOf(m),packed=packedOf(m),nx=DATA.milestones.find(x=>new Date(x.at)>now);
   const dleft=d=>{const n=Math.ceil((new Date(d)-now)/864e5);return n<=0?"today":n===1?"tomorrow":n+" days left"};
   const dp=DATA.milestones.find(x=>x.kind==="dp"),fl=DATA.milestones.find(x=>x.kind==="flight"),bk=DATA.milestones.find(x=>x.kind==="bike");
   const A=[];
   A.push({done:true,t:"Registered for the trip",s:"Form received"});
-  A.push(sg==="joined"?{t:`Transfer the ${jt(dpAmount())} DP + upload the screenshot`,s:`BCA ${S.config.bank_acct||"8400064491"} a/n ${S.config.bank_holder||"George Widodo"} · due ${fmtDate(dp.at,{weekday:"short"})} (${dleft(dp.at)})`,href:"#me",cta:"Pay"}
+  A.push(sg==="joined"?{t:`Transfer the ${rp(dpAmount())} DP + upload the screenshot`,s:`BCA ${S.config.bank_acct||"8400064491"} a/n ${S.config.bank_holder||"George Widodo"} · due ${fmtDate(dp.at,{weekday:"short"})} (${dleft(dp.at)})`,href:"#me",cta:"Pay"}
     :{done:true,t:"DP sent",s:sg==="going"?"Approved by George":"Screenshot received"});
   A.push(sg==="going"?{done:true,t:"You're GOING ✓",s:"DP approved"}:{t:"George approves your DP",s:sg==="pending"?"He's checking BCA. Nothing to do.":"After you transfer",wait:true});
   A.push(m.photo?{done:true,t:"Profile photo added"}:{t:"Add a profile photo",s:"So the crew knows who's who",href:"#me",cta:"Add"});
@@ -105,13 +105,13 @@ function renderHello(){const m=me(),el=$("#hello");if(!m){el.hidden=true;return}
   el.innerHTML=`<div class="hd">${avatar(m)}<div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(m.name.split(" ")[0])}</h3></div></div>
    ${nx?`<div class="today">Next deadline: ${esc(nx.title)} · ${esc(fmtDate(nx.at,{weekday:"short"}))} (${dleft(nx.at)})</div>`:""}
    <ul>${todo.map(li).join("")}${done.map(li).join("")}</ul>`;
-  el.hidden=false}
+}
 function renderHome(){renderHello();
   const now=Date.now(),nx=DATA.milestones.find(m=>new Date(m.at)>now),m=me();
   const sg=m?stage(m):"";const cta=!S.online?`<a class="btn" href="#crew">How to join</a>`:!m?`<a class="btn" href="#crew">Join now · 2 min</a>`:sg==="going"?`<span class="pill ok">You're going ✓</span>`:sg==="pending"?`<span class="pill wait">DP sent · waiting for George</span>`:`<a class="btn" href="#crew">Pay the DP</a>`;
   $("#nextMs").innerHTML=nx?`<div class="pad"><span class="mono">Next · ${esc(fmtDate(nx.at,{weekday:"short"}))}</span><h3>${esc(nx.title)}</h3><div class="left tabular" id="nmLeft"></div><p>${esc(nx.text)}</p><div>${cta}</div></div>`:"";
   const n=nIn(),paid=active().filter(c=>stage(c)==="going").length,tier=topTier();
-  $("#homeStats").innerHTML=`<div><b>${S.state==="ok"?n:"–"}</b><span>Joined</span></div><div><b>${S.state==="ok"?paid:"–"}</b><span>Going ✓</span></div><div><b>${jt(est(n||6,tier,"bawa")).replace("Rp ","")}</b><span>/ orang · ${n||6} ppl · ${TIER[tier]}</span></div>`;
+  $("#homeStats").innerHTML=`<div><b>${S.state==="ok"?n:"–"}</b><span>Joined</span></div><div><b>${S.state==="ok"?paid:"–"}</b><span>Going ✓</span></div><div><b>${jt(est(Math.max(n,6),tier,"bawa")).replace("Rp ","")}</b><span>est. / orang in Japan</span></div>`;
   $("#announce").innerHTML=S.config.announce?`<div class="announce">${esc(S.config.announce)}</div>`:"";
   $("#msList").innerHTML=DATA.milestones.map(x=>{const t=new Date(x.at),st=t<now?"done":(x===nx?"now":"");
     return `<li class="${st}"><div class="d">${esc(fmtDate(x.at,{weekday:"short"}))}<br>${t.getFullYear()}</div><div><h4>${esc(x.title)}</h4><p>${esc(x.text)}</p></div>${st==="done"?'<span class="pill no">Done</span>':st==="now"?'<span class="pill ink">Now</span>':""}</li>`}).join("");
@@ -239,7 +239,7 @@ function renderCrew(){
     $("#mePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};
     const ix=sg==="going"?3:sg==="pending"?2:1;
     $("#meTrack").innerHTML=sg==="out"?`<div class="now" style="grid-column:1/-1"><b>Not going</b>You said you can't make it</div>`
-      :[["Registered ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
+      :[["Joined ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
     $("#meBanner").hidden=!S.justJoined;
     if(S.justJoined)$("#meBanner").innerHTML=`<b>✓ Application received</b>You're registered, ${esc(m.name.split(" ")[0])}. Your status stays <b style="display:inline;font:inherit;text-transform:none">Pending</b> until your DP is paid and George approves it.`;
     const gw=S.config.admin_wa,pr=P(m);
