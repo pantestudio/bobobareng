@@ -15,8 +15,7 @@ const BIKEQ={bawa:["Bawa sendiri","Bring my own bike (bike box on the plane)"],s
 const BAGS={light:["Ringan","1 backpack or small bag"],mid:["Sedang","Plus 1 small suitcase or duffel"],heavy:["Banyak","Big suitcase"]};
 const PARTY={solo:["Sendiri","Just me"],partner:["Sama pasangan","Bringing my partner"],family:["Sama keluarga / teman","Bringing family or friends"]};
 const RIDERS={yes:"Yes, they ride",no:"No, jalan-jalan aja",mix:"Some of them"};
-const FROM=["DPS · Bali","CGK · Jakarta","SUB · Surabaya","KNO · Medan","UPG · Makassar","SIN · Singapore","Other"];
-const AIRLINES=["Garuda Indonesia","Singapore Airlines","Scoot","Cathay Pacific","AirAsia X","Batik Air","Malaysia Airlines","Thai Airways","Japan Airlines","ANA","Jetstar","Philippine Airlines","Belum tau"];
+const AIRLINES=[["Scoot","via Singapore"],["Singapore Airlines","via Singapore"],["AirAsia / AirAsia X","via Kuala Lumpur"],["Batik Air","via Kuala Lumpur"],["Malaysia Airlines","via Kuala Lumpur"],["Garuda Indonesia","via Jakarta"],["Cathay Pacific","via Hong Kong"],["Hong Kong Airlines","via Hong Kong"],["Korean Air","via Seoul"],["Asiana Airlines","via Seoul"],["Jeju Air","via Seoul"],["China Airlines","via Taipei"],["EVA Air","via Taipei"],["Starlux Airlines","via Taipei"],["Thai Airways","via Bangkok"],["Thai Lion Air","via Bangkok"],["Vietnam Airlines","via Hanoi / Saigon"],["VietJet Air","via Saigon"],["Philippine Airlines","via Manila"],["Japan Airlines (JAL)","codeshare, via Singapore / Jakarta"],["ANA","codeshare, via Singapore / Jakarta"],["China Eastern / Juneyao","via Shanghai"],["China Southern","via Guangzhou"]];
 const CATC={Bobo:"#D01A2E",Sepeda:"#F0D9A6",Koper:"#1B1411",Transport:"#C97B63",Makan:"#E9B8A8",Tiket:"#E8A39B","Lain-lain":"#C7BBA8",Refund:"#5E5348"};
 const photo=n=>"photos/"+n+".jpg";
 
@@ -172,17 +171,17 @@ function qHTML(p){
   <fieldset class="q" data-q="party"><legend>6 · Coming alone or with someone?</legend><div class="opts">${Object.entries(PARTY).map(([k,v])=>opt("radio","Party",k,v[0],v[1])).join("")}</div>
     <div class="grid2" id="${p}ExtraBox" hidden style="gap:10px"><div class="field"><label for="${p}Extra">How many extra people?</label><select id="${p}Extra">${[1,2,3,4,5,6].map(n=>`<option>${n}</option>`).join("")}</select></div>
     <div class="field"><label for="${p}Riders">Do they ride too?</label><select id="${p}Riders">${Object.entries(RIDERS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join("")}</select></div></div></fieldset>
-  <fieldset class="q" data-q="flight"><legend>7 · Your flight plan<small>Best guess is fine</small></legend>
+  <fieldset class="q" data-q="flight"><legend>7 · Which airline will you likely fly?<small>From Bali (DPS) · no direct flights to Osaka, all have 1 stop · best guess is fine</small></legend>
     <div class="callout">Flights are NOT included. Everyone books their own ticket.</div>
-    <div class="grid2" style="gap:10px"><div class="field"><label for="${p}From">Flying from</label><select id="${p}From"><option value="">Pick one</option>${FROM.map(f=>`<option>${esc(f)}</option>`).join("")}</select></div>
-    <div class="field"><label for="${p}Air">Likely airline</label><input id="${p}Air" list="airlines" maxlength="40" placeholder="e.g. Garuda, Scoot"></div></div></fieldset>`}
+    <div class="field"><label for="${p}Air">Likely airline</label><select id="${p}Air"><option value="">Pick one</option>${AIRLINES.map(([a,v])=>`<option value="${esc(a)}">${esc(a)} · ${esc(v)}</option>`).join("")}<option value="Belum tau">Belum tau / cheapest one</option></select></div>
+</fieldset>`}
 const radio=(p,n)=>{const r=document.querySelector(`input[name="${p}${n}"]:checked`);return r?r.value:""};
 const checks=(p,n)=>$$(`input[name="${p}${n}"]:checked`).map(x=>x.value);
 function syncExtra(p){$("#"+p+"ExtraBox").hidden=!["partner","family"].includes(radio(p,"Party"))}
 function readQ(p){
   const q={name:$("#"+p+"Name").value.trim(),wa:normWa($("#"+p+"Wa").value),bike:radio(p,"Bike"),
     prefs:{dates:checks(p,"Dates"),budget:checks(p,"Budget"),stay:radio(p,"Stay"),bags:radio(p,"Bags"),party:radio(p,"Party"),
-      extra:+$("#"+p+"Extra").value||0,riders:$("#"+p+"Riders").value,from:$("#"+p+"From").value,airline:$("#"+p+"Air").value.trim()}};
+      extra:+$("#"+p+"Extra").value||0,riders:$("#"+p+"Riders").value,from:"DPS",airline:$("#"+p+"Air").value}};
   if(q.prefs.party==="solo"){q.prefs.extra=0;q.prefs.riders=""}
   const miss=[];if(q.name.length<2)miss.push(["name","your name"]);if(q.wa.length<10||q.wa.length>15)miss.push(["wa","your WhatsApp number"]);
   if(!q.prefs.dates.length)miss.push(["dates","1 · dates"]);if(!q.prefs.budget.length)miss.push(["budget","2 · budget"]);if(!q.prefs.stay)miss.push(["stay","3 · sleep"]);
@@ -193,12 +192,12 @@ function fillQ(p,m){const pr=P(m);
   $$(`input[name="${p}Dates"]`).forEach(x=>x.checked=(pr.dates||[]).includes(x.value));
   $$(`input[name="${p}Budget"]`).forEach(x=>x.checked=(pr.budget||[]).includes(x.value));
   [["Stay",pr.stay],["Bike",m.bike],["Bags",pr.bags],["Party",pr.party]].forEach(([n,v])=>$$(`input[name="${p}${n}"]`).forEach(x=>x.checked=x.value===v));
-  $("#"+p+"Extra").value=String(pr.extra||1);$("#"+p+"Riders").value=pr.riders||"yes";$("#"+p+"From").value=pr.from||"";$("#"+p+"Air").value=pr.airline||"";syncExtra(p)}
+  $("#"+p+"Extra").value=String(pr.extra||1);$("#"+p+"Riders").value=pr.riders||"yes";{const sel=$("#"+p+"Air");if(pr.airline&&![...sel.options].some(o=>o.value===pr.airline))sel.insertAdjacentHTML("beforeend",`<option value="${esc(pr.airline)}">${esc(pr.airline)}</option>`);sel.value=pr.airline||""}syncExtra(p)}
 function complain(p,miss){toast("Please fill in: "+miss.map(x=>x[1]).join(", "));
   const f=miss[0][0],el=f==="name"?$("#"+p+"Name"):f==="wa"?$("#"+p+"Wa"):document.querySelector(`#${p}Q [data-q="${f}"]`);if(el)el.scrollIntoView({behavior:"smooth",block:"center"})}
 function answersDl(c){const p=P(c),fi=c.fin||{},fo=c.fout||{};
   const rows=[["Dates",(p.dates||[]).map(dShort).join(", ")||"–"],["Budget",(p.budget||[]).map(t=>TIER[t]).join(", ")||"–"],["Sleep",lab(STAY,p.stay)],["Sepeda",lab(BIKEQ,c.bike)],
-    ["Stuff",lab(BAGS,p.bags)],["Coming",partyText(c)],["Flight plan",[p.from,p.airline].filter(Boolean).join(" · ")||"–"]];
+    ["Stuff",lab(BAGS,p.bags)],["Coming",partyText(c)],["Airline",p.airline||"–"]];
   if(fi.no||fo.no)rows.push(["Flights",`${esc(fi.no||"?")} arr ${esc(fi.date||"")} ${esc(fi.time||"")} · ${esc(fo.no||"?")} dep ${esc(fo.date||"")} ${esc(fo.time||"")} · ${c.fl_status==="booked"?"booked":"not booked"}`]);
   return `<dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${k==="Flights"?v:esc(v)}</dd>`).join("")}</dl>`}
 let edDirty=false;
@@ -231,8 +230,8 @@ function renderCrew(){
     $("#ansSum").innerHTML=`<div class="acard" style="margin-top:0">${answersDl(m)}</div>`;
     if(!edDirty)fillQ("ed",m);
     $("#outBtn").textContent=m.status==="out"?"I'm back in":"I can't make it";
-    const fi=m.fin||{},fo=m.fout||{};setVal("fiNo",fi.no);setVal("fiFrom",fi.from);setVal("fiDate",fi.date);setVal("fiTime",fi.time);
-    setVal("foNo",fo.no);setVal("foTo",fo.to);setVal("foDate",fo.date);setVal("foTime",fo.time);setVal("flStatus",m.fl_status||"none");
+    const fi=m.fin||{},fo=m.fout||{};setVal("fiNo",fi.no);setVal("fiDate",fi.date);setVal("fiTime",fi.time);
+    setVal("foNo",fo.no);setVal("foDate",fo.date);setVal("foTime",fo.time);setVal("flStatus",m.fl_status||"none");
     $("#flBox").hidden=sg==="out";
   }
   $("#dpAmt").textContent=rp(dpAmount());
@@ -278,8 +277,8 @@ function renderAdmin(){
   setVal("setWa",S.config.admin_wa?"0"+String(S.config.admin_wa).slice(2):"");setVal("setDp",S.config.dp);setVal("setBankName",S.config.bank_name);setVal("setAcct",S.config.bank_acct);setVal("setHolder",S.config.bank_holder);setVal("setAnn",S.config.announce);
 }
 function csv(){const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-  const head=["Name","WhatsApp","Status","Dates","Budget","Sleep","Bike","Stuff","Coming with","Extra people","They ride","Flying from","Airline","Arrival flight","Arrival date","Departure flight","Departure date","Flight status","DP","Joined"];
-  const rows=crewList().map(c=>{const p=P(c),fi=c.fin||{},fo=c.fout||{};return [c.name,"+"+c.wa,STAGE[stage(c)][0],(p.dates||[]).map(dShort).join(" / "),(p.budget||[]).map(t=>TIER[t]).join(" / "),lab(STAY,p.stay),lab(BIKEQ,c.bike),lab(BAGS,p.bags),lab(PARTY,p.party),p.extra||0,RIDERS[p.riders]||"",p.from,p.airline,fi.no,fi.date,fo.no,fo.date,c.fl_status,dpVerified(c.id)?"paid":"",String(c.created_at||"").slice(0,10)]});
+  const head=["Name","WhatsApp","Status","Dates","Budget","Sleep","Bike","Stuff","Coming with","Extra people","They ride","Airline","Arrival flight","Arrival date","Departure flight","Departure date","Flight status","DP","Joined"];
+  const rows=crewList().map(c=>{const p=P(c),fi=c.fin||{},fo=c.fout||{};return [c.name,"+"+c.wa,STAGE[stage(c)][0],(p.dates||[]).map(dShort).join(" / "),(p.budget||[]).map(t=>TIER[t]).join(" / "),lab(STAY,p.stay),lab(BIKEQ,c.bike),lab(BAGS,p.bags),lab(PARTY,p.party),p.extra||0,RIDERS[p.riders]||"",p.airline,fi.no,fi.date,fo.no,fo.date,c.fl_status,dpVerified(c.id)?"paid":"",String(c.created_at||"").slice(0,10)]});
   const blob=new Blob(["﻿"+[head].concat(rows).map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bobo-bareng-crew.csv";document.body.appendChild(a);a.click();a.remove()}
 
@@ -388,8 +387,8 @@ function bind(){
     catch(_){toast("Upload failed. Try a smaller screenshot or WhatsApp it to George.");$("#proofNote").textContent=""}
     finally{$("#proofBtn").disabled=false;$("#proofFile").value=""}};
   $("#flightForm").addEventListener("submit",e=>{e.preventDefault();const g=i=>document.getElementById(i).value.trim();
-    clean(["fiNo","fiFrom","fiDate","fiTime","foNo","foTo","foDate","foTime","flStatus"]);
-    act(()=>upMe({fin:{no:g("fiNo").toUpperCase(),from:g("fiFrom").toUpperCase(),date:g("fiDate"),time:g("fiTime")},fout:{no:g("foNo").toUpperCase(),to:g("foTo").toUpperCase(),date:g("foDate"),time:g("foTime")},fl_status:g("flStatus")}),"Flights saved")});
+    clean(["fiNo","fiDate","fiTime","foNo","foDate","foTime","flStatus"]);
+    act(()=>upMe({fin:{no:g("fiNo").toUpperCase(),from:"DPS",date:g("fiDate"),time:g("fiTime")},fout:{no:g("foNo").toUpperCase(),to:"DPS",date:g("foDate"),time:g("foTime")},fl_status:g("flStatus")}),"Flights saved")});
 
   const today=()=>new Date().toISOString().slice(0,10);
   $("#exDate").value=today();$("#txDate").value=today();
@@ -451,7 +450,7 @@ function hardReload(){location.replace(location.pathname+"?v="+Date.now()+locati
 
 function renderAll(){renderHome();renderCrew();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
 
-$("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");document.body.insertAdjacentHTML("beforeend",`<datalist id="airlines">${AIRLINES.map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`);
+$("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");
 route();bind();renderInstall();
 $("#btnReload").onclick=()=>{$("#btnReload").classList.add("spin");hardReload()};$("#updBtn").onclick=hardReload;
 renderDayChips();renderDay();renderSpots();
