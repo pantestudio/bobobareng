@@ -102,7 +102,7 @@ function renderHello(){const m=me(),el=$("#hello");$("#helloWrap").hidden=!m;$("
   const todo=A.filter(a=>!a.done),done=A.filter(a=>a.done);
   const li=a=>`<li class="${a.done?"done":""}"><span class="ck">${a.done?"✓":a.wait?"…":""}</span><span><b>${esc(a.t)}</b>${a.s?`<small>${esc(a.s)}</small>`:""}</span>${a.href&&!a.done?`<a class="btn small" href="${a.href}">${a.cta}</a>`:"<span></span>"}</li>`;
   const today=now.toLocaleDateString("en-GB",{timeZone:"Asia/Makassar",weekday:"long",day:"numeric",month:"long"});
-  el.innerHTML=`<div class="hd">${avatar(m)}<div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(fname(m.name))}</h3></div></div>
+  el.innerHTML=`<div class="hd"><a href="#me" aria-label="My profile" style="position:relative">${avatar(m)}${m.photo?"":`<span class="addph">+</span>`}</a><div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(fname(m.name))}</h3></div></div>
    ${nx?`<div class="today">Next deadline: ${esc(nx.title)} · ${esc(fmtDate(nx.at,{weekday:"short"}))} (${dleft(nx.at)})</div>`:""}
    <ul>${todo.map(li).join("")}${done.map(li).join("")}</ul>`;
 }
@@ -246,7 +246,7 @@ function renderCrew(){
   if(m){const sg=stage(m),idx=sg==="going"?2:sg==="pending"?1:0;
     $("#meName").textContent=m.name;
     $("#mePhotoWrap").innerHTML=`${avatar(m,"avbig")}<input type="file" accept="image/*" id="mePhoto" hidden><span>${m.photo?"Change":"Add"} photo</span>`;
-    $("#mePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};
+    $("#mePhoto").onchange=e=>pickPhoto(e,"profile");
     const ix=sg==="going"?3:sg==="pending"?2:1;
     $("#meTrack").innerHTML=sg==="out"?`<div class="now" style="grid-column:1/-1"><b>Not going</b>You said you can't make it</div>`
       :[["Joined ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
@@ -272,7 +272,6 @@ function renderCrew(){
   $("#dpAmt").textContent=rp(dpAmount());
   $("#bankName").textContent=S.config.bank_name||"BCA";$("#bankAcct").textContent=S.config.bank_acct||"8400064491";$("#bankHolder").textContent=S.config.bank_holder||"George Widodo";
   const cnt=(keys,get)=>{const t={};keys.forEach(k=>t[k]=0);actv.forEach(c=>{[].concat(get(c)||[]).forEach(v=>{if(v in t)t[v]++})});return t};
-  $("#tallyDates").innerHTML=tl(cnt(DATA.tripDates.map(d=>d.id),c=>P(c).dates),Object.fromEntries(DATA.tripDates.map(d=>[d.id,dShort(d.id)])));
   $("#tallyBudget").innerHTML=tl(cnt(["kere","rame","sultan"],c=>P(c).budget),TIER);
   $("#tallyStay").innerHTML=tl(cnt(Object.keys(STAY),c=>P(c).stay),STAYSHORT);
   $("#tallyBike").innerHTML=tl(cnt(["bawa","sewa","tbd"],c=>c.bike),BIKE);
@@ -317,8 +316,8 @@ function renderGear(){
       items.map(([id,name,note,rent])=>{const st=it[id]||{},md=id==="bike"?modeOf(m,id):st.m||"";
         return `<div class="gi ${st.p?"on":""}"><label><input type="checkbox" data-gp="${id}" ${st.p?"checked":""}><span><b>${esc(name)}</b>${note?`<small>${esc(note)}</small>`:""}</span></label>${rent?`<div class="gseg"><button type="button" data-gm="${id}" data-v="bawa" aria-pressed="${md==="bawa"}">Bawa</button><button type="button" data-gm="${id}" data-v="sewa" aria-pressed="${md==="sewa"}">Sewa</button></div>`:""}</div>`}).join("")+`</div>`).join("");
     if(!typing){const bn=$("#gBikeName");bn.onchange=()=>{myG().bikeName=bn.value.trim();saveGear();toast("Saved")};
-    $("#gPhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};
-    $("#gBikePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"bikes");myG().bikePhoto=p;clearTimeout(gearTimer);await act(()=>upMe({gear:myG()}),"Bike photo saved");myGear=null}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};}
+    $("#gPhoto").onchange=e=>pickPhoto(e,"profile");
+    $("#gBikePhoto").onchange=e=>pickPhoto(e,"bike");}
   }
   const claims={};list.forEach(c=>((gearOf(c).shared)||[]).forEach(id=>(claims[id]=claims[id]||[]).push(c)));
   const mine=m?((myGear||gearOf(m)).shared||[]):[];
@@ -345,6 +344,39 @@ function openProfile(id){const c=S.members.find(x=>x.id===id);if(!c)return;const
    </div>
    <div class="acard"><dl><dt>Budget</dt><dd>${esc((p.budget||[]).map(t=>TIER[t]).join(", ")||"–")}</dd><dt>Sleep</dt><dd>${esc(lab(STAY,p.stay))}</dd><dt>Airline</dt><dd>${esc(p.airline||"–")}</dd><dt>Flight</dt><dd>${c.fl_status==="booked"?"✓ Booked":c.fl_status==="hold"?"Looking":"Not booked yet"}${(c.fin||{}).no?" · lands "+esc(fdate(c.fin.date))+" "+esc(c.fin.time||""):""}</dd><dt>Renting</dt><dd>${esc(rent.join(", ")||"Nothing")}</dd><dt>Group gear</dt><dd>${esc(brings.join(", ")||"–")}</dd></dl></div>
    ${mine?`<a class="btn small" href="#me" data-close="1" style="margin-top:12px">Edit my profile</a>`:""}`)}
+
+/* ---------- photo crop ---------- */
+function cropImage(file,aspect,outW,title){return new Promise(res=>{const url=URL.createObjectURL(file),ov=document.createElement("div");ov.className="crop";
+  ov.innerHTML=`<div class="cbox"><div class="mono" style="margin-bottom:10px">${esc(title)}</div><div class="cframe ${aspect===1?"round":""}" style="aspect-ratio:${aspect}"><img alt="" draggable="false"></div>
+   <div class="zrow"><span>−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span>+</span></div><p class="note" style="text-align:center;margin:6px 0 12px">Drag to move · pinch or slide to zoom</p>
+   <div class="x"><button class="btn ghost" type="button" data-c="0">Cancel</button><button class="btn" type="button" data-c="1">Use photo</button></div></div>`;
+  document.body.appendChild(ov);const fr=ov.querySelector(".cframe"),img=fr.querySelector("img"),rng=ov.querySelector("input");
+  let s=1,x=0,y=0,base=1,iw=0,ih=0,fw=0,fh=0;const pts=new Map();let last=null,pinch=null;
+  const clamp=()=>{const w=iw*base*s,h=ih*base*s;x=Math.min(0,Math.max(fw-w,x));y=Math.min(0,Math.max(fh-h,y))};
+  const apply=()=>{clamp();img.style.transform=`translate(${x}px,${y}px) scale(${s})`};
+  const zoomTo=(ns,cx,cy)=>{ns=Math.min(4,Math.max(1,ns));x=cx-(cx-x)*ns/s;y=cy-(cy-y)*ns/s;s=ns;rng.value=s;apply()};
+  img.onload=()=>{iw=img.naturalWidth;ih=img.naturalHeight;fw=fr.clientWidth;fh=fr.clientHeight;base=Math.max(fw/iw,fh/ih);img.style.width=iw*base+"px";img.style.height=ih*base+"px";x=(fw-iw*base)/2;y=(fh-ih*base)/2;apply()};
+  img.src=url;
+  rng.oninput=()=>zoomTo(+rng.value,fw/2,fh/2);
+  fr.addEventListener("pointerdown",e=>{fr.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});last={x:e.clientX,y:e.clientY};if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s}}});
+  fr.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()],r=fr.getBoundingClientRect();zoomTo(pinch.s*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);return}
+    if(last){x+=e.clientX-last.x;y+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};apply()}});
+  const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;last=pts.size?[...pts.values()][0]:null};
+  fr.addEventListener("pointerup",up);fr.addEventListener("pointercancel",up);
+  ov.addEventListener("click",e=>{const b=e.target.closest("[data-c]");if(!b)return;
+    const done=v=>{URL.revokeObjectURL(url);ov.remove();res(v)};
+    if(b.dataset.c==="0")return done(null);
+    const k=base*s,cv=document.createElement("canvas");cv.width=outW;cv.height=Math.round(outW/aspect);
+    const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(img,-x/k,-y/k,fw/k,fh/k,0,0,cv.width,cv.height);
+    cv.toBlob(bl=>done(bl),"image/jpeg",.86)})})}
+async function pickPhoto(e,kind){const f=e.target.files[0];e.target.value="";if(!f)return;
+  const bl=await cropImage(f,kind==="bike"?4/3:1,kind==="bike"?1600:800,kind==="bike"?"Crop your bike photo":"Crop your profile photo");if(!bl)return;
+  toast("Uploading…");
+  try{const p=await upload(bl,kind==="bike"?"bikes":"profiles");
+    if(kind==="bike"){myG().bikePhoto=p;clearTimeout(gearTimer);await act(()=>upMe({gear:myG()}),"Bike photo saved");myGear=null}
+    else await act(()=>upMe({photo:p}),"Profile photo saved")}
+  catch(err){console.warn(err);toast("Upload failed. Try again on wifi.")}}
 
 /* ---------- ADMIN ---------- */
 function renderAdmin(){
