@@ -55,11 +55,11 @@ async function act(fn,okMsg){try{const r=await fn();await refresh();if(okMsg)toa
   const m=String(e.message||"");toast(m.includes("not_admin")?"Admin code is wrong.":m.includes("not_member")?"Log in first.":m.includes("wa_check")?"That WhatsApp number didn't work. Type it like 0812 3456 7890, or with the country code like +65 9123 4567.":m.includes("duplicate")?"That WhatsApp number is already used.":"Couldn't save. Check your connection and try again.");console.warn(e)}}
 
 /* ---------- routing ---------- */
-const VIEWS=["home","rute","crew","gear","dompet","spots","admin"];
-function route(){let v=(location.hash||"#home").slice(1);if(!VIEWS.includes(v))v="home";
+const VIEWS=["home","rute","crew","gear","dompet","spots","me","admin"];
+function route(){let v=(location.hash||"#home").slice(1);const toLogin=v==="login";if(toLogin)v="crew";if(!VIEWS.includes(v))v="home";
   VIEWS.forEach(x=>{$("#v-"+x).hidden=x!==v});
   $$(".tabs a").forEach(a=>{if(a.dataset.tab===v)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
-  window.scrollTo(0,0)}
+  window.scrollTo(0,0);if(toLogin)setTimeout(()=>{const f=$("#loginForm");if(f&&!f.closest("[hidden]")){f.scrollIntoView({behavior:"smooth",block:"center"});$("#loginWa").focus()}},250)}
 window.addEventListener("hashchange",route);
 
 /* ---------- time ---------- */
@@ -85,7 +85,28 @@ function poolPart(n,tier,bike){const k=Math.min(8,Math.max(3,n||6)),p=DATA.price
 const dpAmount=()=>+S.config.dp||DATA.dp;
 
 /* ---------- HOME ---------- */
-function renderHome(){
+const PERSON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5"/></svg>`;
+function renderHello(){const m=me(),el=$("#hello");if(!m){el.hidden=true;return}
+  const now=new Date(),sg=stage(m),g=gearOf(m),packed=packedOf(m),nx=DATA.milestones.find(x=>new Date(x.at)>now);
+  const dleft=d=>{const n=Math.ceil((new Date(d)-now)/864e5);return n<=0?"today":n===1?"tomorrow":n+" days left"};
+  const dp=DATA.milestones.find(x=>x.kind==="dp"),fl=DATA.milestones.find(x=>x.kind==="flight"),bk=DATA.milestones.find(x=>x.kind==="bike");
+  const A=[];
+  A.push({done:true,t:"Registered for the trip",s:"Form received"});
+  A.push(sg==="joined"?{t:`Transfer the ${jt(dpAmount())} DP + upload the screenshot`,s:`BCA ${S.config.bank_acct||"8400064491"} a/n ${S.config.bank_holder||"George Widodo"} · due ${fmtDate(dp.at,{weekday:"short"})} (${dleft(dp.at)})`,href:"#me",cta:"Pay"}
+    :{done:true,t:"DP sent",s:sg==="going"?"Approved by George":"Screenshot received"});
+  A.push(sg==="going"?{done:true,t:"You're GOING ✓",s:"DP approved"}:{t:"George approves your DP",s:sg==="pending"?"He's checking BCA. Nothing to do.":"After you transfer",wait:true});
+  A.push(m.photo?{done:true,t:"Profile photo added"}:{t:"Add a profile photo",s:"So the crew knows who's who",href:"#me",cta:"Add"});
+  A.push(m.bike==="bawa"||m.bike==="sewa"?{done:true,t:m.bike==="sewa"?"Renting a bike in Osaka":"Bringing your own bike"}:{t:"Decide: bawa or sewa your bike",s:bk?"By "+fmtDate(bk.at)+" so rentals can be booked":"",href:"#gear",cta:"Decide"});
+  A.push(m.fl_status==="booked"?{done:true,t:"Flight booked"}:{t:"Book your flight + add it here",s:"Once dates are locked"+(fl?" · by "+fmtDate(fl.at):"")+" · not included",href:"#me",cta:"Add"});
+  A.push(packed>=GITEMS.length?{done:true,t:"Everything packed"}:{t:`Packing list ${packed}/${GITEMS.length}`,s:"Tick things off as you pack",href:"#gear",cta:"Open"});
+  const todo=A.filter(a=>!a.done),done=A.filter(a=>a.done);
+  const li=a=>`<li class="${a.done?"done":""}"><span class="ck">${a.done?"✓":a.wait?"…":""}</span><span><b>${esc(a.t)}</b>${a.s?`<small>${esc(a.s)}</small>`:""}</span>${a.href&&!a.done?`<a class="btn small" href="${a.href}">${a.cta}</a>`:"<span></span>"}</li>`;
+  const today=now.toLocaleDateString("en-GB",{timeZone:"Asia/Makassar",weekday:"long",day:"numeric",month:"long"});
+  el.innerHTML=`<div class="hd">${avatar(m)}<div><div class="mono">${esc(today)}</div><h3>Halo, ${esc(m.name.split(" ")[0])}</h3></div></div>
+   ${nx?`<div class="today">Next deadline: ${esc(nx.title)} · ${esc(fmtDate(nx.at,{weekday:"short"}))} (${dleft(nx.at)})</div>`:""}
+   <ul>${todo.map(li).join("")}${done.map(li).join("")}</ul>`;
+  el.hidden=false}
+function renderHome(){renderHello();
   const now=Date.now(),nx=DATA.milestones.find(m=>new Date(m.at)>now),m=me();
   const sg=m?stage(m):"";const cta=!S.online?`<a class="btn" href="#crew">How to join</a>`:!m?`<a class="btn" href="#crew">Join now · 2 min</a>`:sg==="going"?`<span class="pill ok">You're going ✓</span>`:sg==="pending"?`<span class="pill wait">DP sent · waiting for George</span>`:`<a class="btn" href="#crew">Pay the DP</a>`;
   $("#nextMs").innerHTML=nx?`<div class="pad"><span class="mono">Next · ${esc(fmtDate(nx.at,{weekday:"short"}))}</span><h3>${esc(nx.title)}</h3><div class="left tabular" id="nmLeft"></div><p>${esc(nx.text)}</p><div>${cta}</div></div>`:"";
@@ -204,14 +225,18 @@ let edDirty=false;
 function tl(o,labels){const mx=Math.max(1,...Object.values(o));return Object.entries(o).map(([k,v])=>`<div class="r"><span>${esc(labels[k]||k)}</span><span class="b"><i style="width:${v/mx*100}%"></i></span><span>${v}</span></div>`).join("")}
 const ORDER={going:0,pending:1,joined:2,out:3};
 function renderCrew(){
-  const list=crewList(),m=me(),act=active();
-  $("#crewCount").textContent=S.state==="ok"?`${act.length} joined · ${act.filter(c=>stage(c)==="going").length} going`:"";
+  const list=crewList(),m=me(),actv=active();
+  $("#crewCount").textContent=S.state==="ok"?`${actv.length} joined · ${actv.filter(c=>stage(c)==="going").length} going`:"";
   $("#crewGate").innerHTML=!S.online?`<div class="box pad"><h3 class="disp" style="font-size:26px">Not connected yet</h3><p class="note" style="margin-top:8px">The organiser still needs to add the database keys to config.js.</p></div>`
     :S.state==="loading"?`<div class="empty">Loading crew…</div>`:S.state==="err"?`<div class="empty">Can't reach the server. Check your connection, then reload.</div>`:"";
   $("#regBox").hidden=!(S.online&&S.state!=="loading"&&!m);
   $("#meBox").hidden=!m;
+  $("#crewMe").hidden=!m;if(m)$("#crewMe").innerHTML=`<span>You're in · ${stagePill(m)}</span><span class="mono">My profile →</span>`;
+  $("#meGate").innerHTML=m?"":S.state==="loading"?`<div class="empty">Loading…</div>`:`<div class="box pad"><h3 class="disp" style="font-size:26px">Not logged in</h3><p class="note" style="margin:6px 0 12px">Join the trip, or log in with the WhatsApp number you joined with.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn small" href="#crew">Join</a><a class="btn small ghost" href="#login">Log in</a></div></div>`;
   if(m){const sg=stage(m),idx=sg==="going"?2:sg==="pending"?1:0;
     $("#meName").textContent=m.name;
+    $("#mePhotoWrap").innerHTML=`${avatar(m,"avbig")}<input type="file" accept="image/*" id="mePhoto" hidden><span>${m.photo?"Change":"Add"} photo</span>`;
+    $("#mePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};
     const ix=sg==="going"?3:sg==="pending"?2:1;
     $("#meTrack").innerHTML=sg==="out"?`<div class="now" style="grid-column:1/-1"><b>Not going</b>You said you can't make it</div>`
       :[["Registered ✓","Form received"],[sg==="pending"||sg==="going"?"DP sent ✓":"Pay DP","Transfer + screenshot"],[sg==="going"?"Going ✓":"Approval",sg==="going"?"Approved by George":"George checks BCA"]].map((s,i)=>`<div class="${i<ix?"done":i===ix?"now":""}"><b>${s[0]}</b>${s[1]}</div>`).join("");
@@ -236,7 +261,7 @@ function renderCrew(){
   }
   $("#dpAmt").textContent=rp(dpAmount());
   $("#bankName").textContent=S.config.bank_name||"BCA";$("#bankAcct").textContent=S.config.bank_acct||"8400064491";$("#bankHolder").textContent=S.config.bank_holder||"George Widodo";
-  const cnt=(keys,get)=>{const t={};keys.forEach(k=>t[k]=0);act.forEach(c=>{[].concat(get(c)||[]).forEach(v=>{if(v in t)t[v]++})});return t};
+  const cnt=(keys,get)=>{const t={};keys.forEach(k=>t[k]=0);actv.forEach(c=>{[].concat(get(c)||[]).forEach(v=>{if(v in t)t[v]++})});return t};
   $("#tallyDates").innerHTML=tl(cnt(DATA.tripDates.map(d=>d.id),c=>P(c).dates),Object.fromEntries(DATA.tripDates.map(d=>[d.id,dShort(d.id)])));
   $("#tallyBudget").innerHTML=tl(cnt(["kere","rame","sultan"],c=>P(c).budget),TIER);
   $("#tallyStay").innerHTML=tl(cnt(Object.keys(STAY),c=>P(c).stay),STAYSHORT);
@@ -282,8 +307,8 @@ function renderGear(){
       items.map(([id,name,note,rent])=>{const st=it[id]||{},md=id==="bike"?modeOf(m,id):st.m||"";
         return `<div class="gi ${st.p?"on":""}"><label><input type="checkbox" data-gp="${id}" ${st.p?"checked":""}><span><b>${esc(name)}</b>${note?`<small>${esc(note)}</small>`:""}</span></label>${rent?`<div class="gseg"><button type="button" data-gm="${id}" data-v="bawa" aria-pressed="${md==="bawa"}">Bawa</button><button type="button" data-gm="${id}" data-v="sewa" aria-pressed="${md==="sewa"}">Sewa</button></div>`:""}</div>`}).join("")+`</div>`).join("");
     if(!typing){const bn=$("#gBikeName");bn.onchange=()=>{myG().bikeName=bn.value.trim();saveGear();toast("Saved")};
-    $("#gPhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(_){toast("Upload failed. Try a smaller photo.")}};
-    $("#gBikePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"bikes");myG().bikePhoto=p;clearTimeout(gearTimer);await act(()=>upMe({gear:myG()}),"Bike photo saved");myGear=null}catch(_){toast("Upload failed. Try a smaller photo.")}};}
+    $("#gPhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"profiles");await act(()=>upMe({photo:p}),"Photo saved")}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};
+    $("#gBikePhoto").onchange=async e=>{const f=e.target.files[0];if(!f)return;toast("Uploading…");try{const p=await upload(f,"bikes");myG().bikePhoto=p;clearTimeout(gearTimer);await act(()=>upMe({gear:myG()}),"Bike photo saved");myGear=null}catch(e){console.warn(e);toast("Upload failed. Try a smaller photo.")}};}
   }
   const claims={};list.forEach(c=>((gearOf(c).shared)||[]).forEach(id=>(claims[id]=claims[id]||[]).push(c)));
   const mine=m?((myGear||gearOf(m)).shared||[]):[];
@@ -422,16 +447,16 @@ function bind(){
 
   $("#regForm").addEventListener("submit",e=>{e.preventDefault();const {q,miss}=readQ("reg");if(miss.length){complain("reg",miss);return}
     const btn=$("#regForm button[type=submit]");btn.disabled=true;
-    act(async()=>{const r=await rpc("fn_login",{p_name:q.name,p_wa:q.wa});S.wa=r.wa;store.set("bobo.wa",r.wa);await upMe({name:q.name,status:"in",bike:q.bike,prefs:q.prefs});S.justJoined=true},"Application received ✓").then(()=>{if(S.justJoined)$("#meBox").scrollIntoView({behavior:"smooth",block:"start"})}).finally(()=>btn.disabled=false)});
+    act(async()=>{const r=await rpc("fn_login",{p_name:q.name,p_wa:q.wa});S.wa=r.wa;store.set("bobo.wa",r.wa);store.set("bobo.known","1");await upMe({name:q.name,status:"in",bike:q.bike,prefs:q.prefs});S.justJoined=true},"Application received ✓").then(()=>{if(S.justJoined)location.hash="#me"}).finally(()=>btn.disabled=false)});
   $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();const wa=normWa($("#loginWa").value);if(wa.length<10){toast("Check the WhatsApp number");return}
-    try{const r=await rpc("fn_login",{p_name:"",p_wa:wa});S.wa=r.wa;store.set("bobo.wa",r.wa);await refresh();toast("Welcome back, "+r.name)}
+    try{const r=await rpc("fn_login",{p_name:"",p_wa:wa});S.wa=r.wa;store.set("bobo.wa",r.wa);store.set("bobo.known","1");await refresh();location.hash="#home";toast("Welcome back, "+r.name)}
     catch(_){toast("That number hasn't joined yet. Fill the form above.")}});
   ["reg","ed"].forEach(p=>document.getElementById(p+"Q").addEventListener("change",()=>{syncExtra(p);if(p==="ed")edDirty=true}));
   $("#edQ").addEventListener("input",()=>edDirty=true);
   $("#editForm").addEventListener("submit",e=>{e.preventDefault();const {q,miss}=readQ("ed");if(miss.length){complain("ed",miss);return}
-    act(async()=>{const r=await upMe({name:q.name,wa:q.wa,bike:q.bike,prefs:q.prefs});S.wa=r.wa;store.set("bobo.wa",r.wa);edDirty=false},"Saved")});
+    act(async()=>{const r=await upMe({name:q.name,wa:q.wa,bike:q.bike,prefs:q.prefs});S.wa=r.wa;store.set("bobo.wa",r.wa);store.set("bobo.known","1");edDirty=false},"Saved")});
   $("#outBtn").onclick=()=>{const m=me();if(!m)return;const back=m.status==="out";act(()=>upMe({status:back?"in":"out"}),back?"Welcome back!":"Got it. Marked as not going.")};
-  $("#logoutBtn").onclick=()=>{S.wa=null;store.set("bobo.wa",null);renderAll();toast("Logged out on this phone")};
+  $("#logoutBtn").onclick=()=>{S.wa=null;store.set("bobo.wa",null);renderAll();location.hash="#home";toast("Logged out on this phone")};
   $("#copyAmt").onclick=()=>copy(String(dpAmount()),"Amount copied");
   $("#copyAcct").onclick=()=>copy(S.config.bank_acct||"8400064491","Account copied");
   $("#proofBtn").onclick=async()=>{const f=$("#proofFile").files[0];if(!f){toast("Pick the screenshot first");return}
@@ -507,7 +532,10 @@ function hardReload(){location.replace(location.pathname+"?v="+Date.now()+locati
     if(dy>=GO){el.classList.add("go");tx.textContent="Updating…";show(GO);setTimeout(hardReload,150)}else show(-200);dy=0},{passive:true});
 })();
 
-function renderAll(){renderHome();renderCrew();renderGear();renderAdmin();renderWallet();renderDay();const m=me();$("#meChip").textContent=m?m.name.split(" ")[0]:"JOIN"}
+function renderChip(){const m=me(),c=$("#meChip");
+  if(m){c.classList.add("av");c.href="#me";c.setAttribute("aria-label","My profile");c.innerHTML=m.photo?`<img src="${esc(fileUrl(m.photo))}" alt="">`:PERSON}
+  else{c.classList.remove("av");c.removeAttribute("aria-label");const known=store.get("bobo.known");c.href=known?"#login":"#crew";c.textContent=known?"LOG IN":"JOIN"}}
+function renderAll(){renderCrew();renderHome();renderGear();renderAdmin();renderWallet();renderDay();renderChip()}
 
 $("#regQ").innerHTML=qHTML("reg");$("#edQ").innerHTML=qHTML("ed");
 route();bind();renderInstall();
